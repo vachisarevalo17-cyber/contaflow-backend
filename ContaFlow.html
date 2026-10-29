@@ -1,0 +1,2809 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1D4ED8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ContaFlow">
+  <title>ContaFlow — Del XML a la póliza</title>
+  <style>
+    :root{
+      --bg:#05080F; --s1:#0B1221; --s2:#101A2E; --s3:#182238;
+      --b1:rgba(255,255,255,0.05); --b2:rgba(255,255,255,0.09);
+      --blue:#3B82F6; --blue-d:#2563EB; --cyan:#22D3EE;
+      --green:#4ADE80; --amber:#FBB040; --red:#F87171; --purple:#A78BFA;
+      --t1:#F0F4FF; --t2:#8BA3C7; --t3:#3D5478;
+      --r1:10px; --r2:16px; --r3:22px;
+    }
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{background:var(--bg);color:var(--t1);min-height:100vh;
+      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+      font-size:14px;overflow-x:hidden}
+
+    /* SPLASH */
+    #splash{position:fixed;inset:0;z-index:9999;
+      background:radial-gradient(ellipse 80% 60% at 50% 0%,#0D1F45 0%,var(--bg) 70%);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      transition:opacity .6s ease}
+    .sp-logo{position:relative;display:flex;align-items:center;justify-content:center;
+      width:120px;height:120px}
+    .sp-logo img,.sp-logo svg{width:90px;height:90px;border-radius:22px;
+      box-shadow:0 0 60px rgba(34,211,238,.3);
+      animation:popIn .7s cubic-bezier(.34,1.56,.64,1) forwards}
+    .sp-ring{position:absolute;border-radius:50%;border:1px solid;animation:ringPulse 3s ease-in-out infinite}
+    .sp-ring:nth-child(1){inset:-15px;border-color:rgba(34,211,238,.2);animation-delay:0s}
+    .sp-ring:nth-child(2){inset:-32px;border-color:rgba(34,211,238,.1);animation-delay:.5s}
+    .sp-ring:nth-child(3){inset:-50px;border-color:rgba(34,211,238,.05);animation-delay:1s}
+    @keyframes ringPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.4}}
+    @keyframes popIn{0%{opacity:0;transform:scale(.3)}100%{opacity:1;transform:scale(1)}}
+    .sp-title{margin-top:24px;font-size:36px;font-weight:900;letter-spacing:-1.5px;
+      background:linear-gradient(135deg,#fff 40%,var(--cyan));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+      animation:fadeUp .5s .3s both}
+    .sp-sub{font-size:11px;color:var(--t3);letter-spacing:2px;text-transform:uppercase;
+      margin-top:6px;animation:fadeUp .5s .5s both}
+    .sp-bar{width:80px;height:2px;background:var(--s3);border-radius:2px;
+      margin-top:48px;overflow:hidden;animation:fadeUp .5s .7s both}
+    .sp-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));
+      border-radius:2px;animation:barLoad 1.8s .8s ease forwards}
+    @keyframes barLoad{to{width:100%}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+    /* HEADER */
+    #app-header{
+      background:rgba(5,8,15,.9);
+      backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+      border-bottom:1px solid var(--b1);
+      padding:0 16px;height:58px;
+      position:sticky;top:0;z-index:10;
+      display:flex;justify-content:space-between;align-items:center;
+    }
+    .hdr-brand{display:flex;align-items:center;gap:10px}
+    .hdr-logo{width:34px;height:34px;border-radius:10px;flex-shrink:0}
+    .hdr-name{font-size:18px;font-weight:900;letter-spacing:-.8px;
+      background:linear-gradient(120deg,#fff,var(--cyan));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .hdr-emp{font-size:9px;color:var(--t3);margin-top:1px;letter-spacing:.3px}
+    .hdr-right{display:flex;align-items:center;gap:8px}
+    .hdr-badge{background:rgba(34,211,238,.12);color:var(--cyan);
+      font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;letter-spacing:.5px}
+    .hdr-count{text-align:right}
+    .hdr-num{font-size:15px;font-weight:800;color:var(--cyan);line-height:1}
+    .hdr-label{font-size:8px;color:var(--t3);margin-top:1px}
+
+    /* NAV */
+    #app-nav{
+      position:fixed;bottom:0;left:0;right:0;z-index:10;
+      background:rgba(5,8,15,.97);
+      backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+      border-top:1px solid var(--b1);
+      display:flex;align-items:stretch;
+      padding-bottom:env(safe-area-inset-bottom);
+    }
+    .nb{flex:1;background:none;border:none;padding:8px 0 10px;
+      display:flex;flex-direction:column;align-items:center;gap:3px;
+      cursor:pointer;font-family:inherit;position:relative;transition:.15s}
+    .nb:active{opacity:.7}
+    .nb-ic{font-size:20px;line-height:1;transition:transform .2s}
+    .nb-lb{font-size:9px;font-weight:600;transition:color .2s}
+    .nb.active .nb-ic{transform:scale(1.2)}
+    .nb.active .nb-lb{color:var(--cyan)}
+    .nb:not(.active) .nb-lb{color:var(--t3)}
+    .nb-bar{position:absolute;top:0;left:25%;right:25%;height:2px;
+      background:var(--cyan);border-radius:0 0 3px 3px;
+      box-shadow:0 0 10px var(--cyan);
+      transition:opacity .2s}
+    .nb.active .nb-bar{opacity:1}
+    .nb:not(.active) .nb-bar{opacity:0}
+
+    /* MAIN */
+    main{padding:16px 16px 100px;animation:fadeIn .2s ease}
+
+    /* CARDS */
+    .card{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r2);padding:14px;margin-bottom:10px}
+    .card-glow{border-color:rgba(34,211,238,.15);box-shadow:0 0 24px rgba(34,211,238,.05)}
+
+    /* KPI GRID */
+    .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+    .kpi{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r2);
+      padding:14px 12px;position:relative;overflow:hidden}
+    .kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:currentColor;opacity:.5}
+    .kpi-val{font-size:24px;font-weight:900;line-height:1;margin-top:6px;letter-spacing:-.5px}
+    .kpi-label{font-size:10px;color:var(--t2);font-weight:500}
+    .kpi-icon{font-size:18px;margin-bottom:2px}
+
+    /* ── BUTTONS 3D ────────────────────────────────────────────────────────── */
+    .btn{
+      border:none;border-radius:14px;padding:14px 16px;
+      font-size:13px;font-weight:700;cursor:pointer;width:100%;display:block;
+      font-family:inherit;letter-spacing:.2px;position:relative;overflow:hidden;
+      transition:transform .12s, box-shadow .12s;
+      -webkit-appearance:none;
+    }
+    /* Shine overlay */
+    .btn::before{
+      content:'';position:absolute;top:0;left:0;right:0;height:45%;
+      background:linear-gradient(180deg,rgba(255,255,255,.18) 0%,rgba(255,255,255,0) 100%);
+      border-radius:14px 14px 0 0;pointer-events:none;
+    }
+    /* Press effect */
+    .btn:active{transform:translateY(2px) scale(.99);}
+
+    /* PRIMARY — Blue 3D */
+    .btn-p,.btn-primary{
+      background:linear-gradient(180deg,#4D8EF8 0%,#1D4ED8 100%);
+      color:#fff;
+      border-top:1px solid rgba(255,255,255,.2);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.15) inset,
+        0 -1px 0 rgba(0,0,0,.25) inset,
+        0 6px 20px rgba(37,99,235,.5),
+        0 2px 4px rgba(0,0,0,.3);
+    }
+    .btn-p:active,.btn-primary:active{
+      box-shadow:0 2px 8px rgba(37,99,235,.4),0 1px 2px rgba(0,0,0,.3);
+    }
+
+    /* CYAN — Accent 3D */
+    .btn-c{
+      background:linear-gradient(180deg,#38D9EF 0%,#0891B2 100%);
+      color:#fff;
+      border-top:1px solid rgba(255,255,255,.25);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.2) inset,
+        0 -1px 0 rgba(0,0,0,.2) inset,
+        0 6px 24px rgba(34,211,238,.45),
+        0 2px 4px rgba(0,0,0,.3);
+    }
+    .btn-c:active{box-shadow:0 2px 10px rgba(34,211,238,.4),0 1px 2px rgba(0,0,0,.2);}
+
+    /* SUCCESS — Green 3D */
+    .btn-g,.btn-success{
+      background:linear-gradient(180deg,#4CE082 0%,#16A34A 100%);
+      color:#fff;
+      border-top:1px solid rgba(255,255,255,.2);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.18) inset,
+        0 -1px 0 rgba(0,0,0,.2) inset,
+        0 6px 20px rgba(74,222,128,.4),
+        0 2px 4px rgba(0,0,0,.25);
+    }
+    .btn-g:active,.btn-success:active{box-shadow:0 2px 8px rgba(74,222,128,.35);}
+
+    /* SECONDARY — Glass 3D */
+    .btn-s,.btn-secondary{
+      background:linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.02) 100%);
+      color:var(--t2);
+      border:1px solid rgba(255,255,255,.1);
+      border-top-color:rgba(255,255,255,.14);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.06) inset,
+        0 2px 8px rgba(0,0,0,.3);
+    }
+    .btn-s:active,.btn-secondary:active{box-shadow:0 1px 3px rgba(0,0,0,.2);}
+
+    /* DANGER — Red 3D */
+    .btn-r,.btn-danger{
+      background:linear-gradient(180deg,rgba(248,113,113,.2) 0%,rgba(127,29,29,.3) 100%);
+      color:var(--red);font-size:11px;
+      border:1px solid rgba(248,113,113,.2);
+      border-top-color:rgba(248,113,113,.25);
+      box-shadow:0 2px 8px rgba(127,29,29,.3);
+    }
+    .btn-r:active,.btn-danger:active{box-shadow:0 1px 3px rgba(127,29,29,.2);}
+
+    /* PURPLE — Special */
+    .btn-purple{
+      background:linear-gradient(180deg,#9F7AEA 0%,#6D28D9 100%);
+      color:#fff;
+      border-top:1px solid rgba(255,255,255,.2);
+      box-shadow:
+        0 1px 0 rgba(255,255,255,.15) inset,
+        0 6px 20px rgba(109,40,217,.45),
+        0 2px 4px rgba(0,0,0,.3);
+    }
+    .btn-purple:active{box-shadow:0 2px 8px rgba(109,40,217,.4);}
+
+    /* INPUTS */
+    input,select,textarea{
+      width:100%;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r1);
+      padding:11px 13px;font-size:13px;color:var(--t1);outline:none;
+      font-family:inherit;-webkit-appearance:none;transition:border-color .2s,box-shadow .2s}
+    input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(34,211,238,.08)}
+    label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t2);cursor:pointer}
+    input[type=checkbox]{width:16px;height:16px;accent-color:var(--cyan)}
+
+    /* TABLES */
+    table{width:100%;border-collapse:collapse;font-size:10px}
+    th{padding:7px 5px;text-align:left;color:var(--t3);font-weight:600;
+      border-bottom:1px solid var(--b1);font-size:9px;letter-spacing:.3px}
+    td{padding:8px 5px;border-bottom:1px solid rgba(255,255,255,.02)}
+    tr:last-child td{border-bottom:none}
+
+    /* FACTURA CARD */
+    .fc{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r2);
+      margin-bottom:8px;overflow:hidden;transition:border-color .15s}
+    .fc:active{border-color:var(--b2)}
+
+    /* BADGE */
+    .badge{font-size:9px;padding:3px 9px;border-radius:20px;font-weight:700;display:inline-block}
+
+    /* DROP ZONE */
+    .drop-zone{border:2px dashed var(--b2);border-radius:var(--r3);
+      padding:32px;text-align:center;cursor:pointer;background:var(--s1);
+      margin-bottom:12px;transition:all .2s}
+    .drop-zone:active{border-color:var(--cyan);background:rgba(34,211,238,.04)}
+
+    /* FILTER ROW */
+    .filter-row{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;
+      padding-bottom:4px;scrollbar-width:none}
+    .filter-btn{border:1px solid var(--b1);border-radius:20px;padding:5px 13px;
+      font-size:10px;cursor:pointer;white-space:nowrap;background:var(--s2);
+      color:var(--t3);font-family:inherit;transition:all .15s}
+
+    /* TOAST */
+    .toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);
+      z-index:1000;padding:12px 20px;border-radius:var(--r1);font-size:12px;
+      color:#fff;max-width:300px;text-align:center;font-weight:600;
+      box-shadow:0 8px 40px rgba(0,0,0,.5);backdrop-filter:blur(10px)}
+
+    /* MODAL */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;
+      display:flex;align-items:center;justify-content:center;padding:20px;
+      backdrop-filter:blur(8px)}
+    .modal{background:var(--s2);border:1px solid var(--b2);
+      border-radius:var(--r3);padding:24px;width:100%;max-width:320px}
+
+    /* SECTION TITLE */
+    .section-title{font-size:15px;font-weight:700;margin-bottom:12px;color:var(--t1)}
+
+    /* HERO */
+    .hero{background:linear-gradient(135deg,var(--s2) 0%,#0D1929 100%);
+      border:1px solid var(--b1);border-radius:var(--r3);padding:22px;
+      margin-bottom:20px;position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;top:-50px;right:-30px;
+      width:160px;height:160px;border-radius:50%;
+      background:radial-gradient(circle,rgba(34,211,238,.1),transparent 70%)}
+
+    /* MISC */
+    .stat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:18px}
+    .plan-card{background:var(--s2);border:1px solid var(--b1);
+      border-radius:var(--r2);padding:14px;margin-bottom:10px;cursor:pointer}
+    .method-btn{background:var(--s2);border:1px solid var(--b1);border-radius:var(--r1);
+      padding:10px;font-size:11px;cursor:pointer;font-family:inherit;color:var(--t2)}
+    ::-webkit-scrollbar{display:none}
+    *{scrollbar-width:none}
+  </style>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+<div id="splash">
+  <div style="position:relative;display:flex;align-items:center;justify-content:center;width:130px;height:130px">
+    <div style="position:absolute;width:200px;height:200px">
+      <div class="ring ring1"></div><div class="ring ring2"></div><div class="ring ring3"></div>
+    </div>
+    <div class="splash-logo"><img src="data:image/jpeg;base64,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" style="width:150px;height:150px;border-radius:75px;object-fit:cover;box-shadow:0 0 40px #1D4ED855"/></div>
+  </div>
+  <div class="splash-title">ContaFlow</div>
+  <div class="splash-sub">DEL XML A LA PÓLIZA — AUTOMÁTICO</div>
+  <div class="splash-bar"><div class="splash-bar-fill"></div></div>
+</div>
+<div id="modal-el" style="display:none"></div>
+<input type="file" id="xml-input" accept=".xml" multiple style="display:none">
+<div id="toast-el" class="toast" style="display:none"></div>
+<div id="app"></div>
+<script>
+// ContaFlow MX - Versión limpia
+// Define render globalmente para evitar errores de hoisting
+const LOGO=`<svg width="32" height="32" viewBox="0 0 90 90" fill="none"><rect width="90" height="90" rx="22" fill="url(#lgh)"/><defs><linearGradient id="lgh" x1="0" y1="0" x2="90" y2="90"><stop offset="0%" stop-color="#1D4ED8"/><stop offset="100%" stop-color="#0EA5E9"/></linearGradient></defs><rect x="22" y="16" width="38" height="48" rx="6" fill="white" opacity=".95"/><rect x="29" y="27" width="24" height="3" rx="1.5" fill="#3B82F6"/><rect x="29" y="34" width="24" height="3" rx="1.5" fill="#3B82F6" opacity=".6"/><rect x="29" y="41" width="16" height="3" rx="1.5" fill="#3B82F6" opacity=".4"/><circle cx="58" cy="62" r="13" fill="#10B981"/><path d="M51 62 L56 67 L65 56" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const XML_DEMO=`<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Fecha="2026-08-09T10:30:00" SubTotal="10690.00" Total="12400.40" TipoDeComprobante="I" FormaPago="03">
+  <cfdi:Emisor Rfc="PEX981023AB2" Nombre="PAPELERIA EXPRESS SA DE CV" RegimenFiscal="601"/>
+  <cfdi:Receptor Rfc="DEMO990101AA1" Nombre="TU EMPRESA SA DE CV" UsoCFDI="G03"/>
+  <cfdi:Conceptos><cfdi:Concepto Descripcion="Papeleria y utiles de oficina" ValorUnitario="10690.00" Importe="10690.00"/></cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="1710.40">
+    <cfdi:Traslados><cfdi:Traslado Impuesto="002" Importe="1710.40" TasaOCuota="0.160000"/></cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" UUID="a1b2c3d4-1234-5678-abcd-ef0123456789" FechaTimbrado="2026-08-09T10:31:22"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>`;
+
+const XML_DEMO_RET=`<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" Version="4.0" Fecha="2026-08-09T11:00:00" SubTotal="15000.00" Total="12627.00" TipoDeComprobante="I" FormaPago="03">
+  <cfdi:Emisor Rfc="GOMA801010AA1" Nombre="GONZALEZ MORALES ARQUITECTO" RegimenFiscal="612"/>
+  <cfdi:Receptor Rfc="DEMO990101AA1" Nombre="TU EMPRESA SA DE CV" UsoCFDI="G03"/>
+  <cfdi:Conceptos><cfdi:Concepto Descripcion="Honorarios por servicios de arquitectura" ValorUnitario="15000.00" Importe="15000.00"/></cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="2400.00" TotalImpuestosRetenidos="4773.00">
+    <cfdi:Retenciones>
+      <cfdi:Retencion Impuesto="001" Importe="1500.00"/>
+      <cfdi:Retencion Impuesto="002" Importe="3273.00"/>
+    </cfdi:Retenciones>
+    <cfdi:Traslados><cfdi:Traslado Impuesto="002" Importe="2400.00" TasaOCuota="0.160000"/></cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" UUID="b2c3d4e5-2345-6789-bcde-f01234567890" FechaTimbrado="2026-08-09T11:01:00"/>
+  </cfdi:Complemento>
+</cfdi:Comprobante>`;
+
+const PLANES=[
+  {id:'basico',nombre:'Básico',precio:199,color:'#3B82F6',mp:'https://mpago.la/34nxJTN',features:['1 empresa / RFC','50 facturas al mes','Pólizas automáticas con retenciones','Exportar a Excel','Auxiliar contable']},
+  {id:'pro',nombre:'Pro',precio:499,color:'#7C3AED',tag:'Más popular',mp:'https://mpago.la/2qJXy8V',features:['3 empresas / RFC','Facturas ilimitadas','Descarga masiva SAT','PDF + Excel','Soporte prioritario']},
+  {id:'despacho',nombre:'Despacho',precio:899,color:'#D97706',mp:'https://mpago.la/2cwxASX',features:['10 empresas / RFC','Multi-usuario','Todo lo anterior','Reportes mensuales','WhatsApp directo']},
+];
+
+
+// ── SISTEMA DE ACCESO ─────────────────────────────────────────────────────────
+const CF_SECRET = 'CF2026VALE_CONTAFLOW';
+const ADMIN_PASS = 'CF2026admin';
+
+const PLAN_CONFIG = {
+  basico:   {nombre:'Básico',   precio:199, maxEmpresas:2,  color:'#3B82F6'},
+  pro:      {nombre:'Pro',      precio:499, maxEmpresas:5,  color:'#7C3AED'},
+  despacho: {nombre:'Despacho', precio:899, maxEmpresas:10, color:'#D97706'},
+  demo:     {nombre:'Demo',     precio:0,   maxEmpresas:1,  color:'#64748B'},
+};
+
+function makeChecksum(plan,maxEmp,expiry,ts){
+  const str=`${plan}|${maxEmp}|${expiry}|${ts}|${CF_SECRET}`;
+  let h=5381;for(let i=0;i<str.length;i++)h=((h<<5)+h+str.charCodeAt(i))|0;
+  return Math.abs(h).toString(36).toUpperCase().slice(0,6);
+}
+
+function generarCodigoURL(plan,clienteNombre,meses){
+  const cfg=PLAN_CONFIG[plan];
+  const exp=new Date();exp.setMonth(exp.getMonth()+meses);
+  const expiryStr=exp.toISOString().slice(0,7);
+  const ts=Date.now();
+  const c=makeChecksum(plan,cfg.maxEmpresas,expiryStr,ts);
+  const data={p:plan,m:cfg.maxEmpresas,e:expiryStr,n:clienteNombre,t:ts,c};
+  const encoded=btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  return window.location.origin+window.location.pathname+'?activate='+encoded;
+}
+
+function validarCodigo(encoded){
+  try{
+    const data=JSON.parse(decodeURIComponent(escape(atob(encoded))));
+    const{p,m,e,n,t,c}=data;
+    if(c!==makeChecksum(p,m,e,t))return null;
+    const exp=new Date(e+'-28');
+    if(new Date()>exp)return{error:'Código vencido el '+e};
+    return{plan:p,maxEmpresas:m,expiry:e,clienteNombre:n};
+  }catch(e){return null;}
+}
+
+// Plan info
+function cargarPlan(){
+  try{return JSON.parse(localStorage.getItem('cf_plan_info')||'null')}catch(e){return null}
+}
+function guardarPlan(info){
+  try{localStorage.setItem('cf_plan_info',JSON.stringify(info))}catch(e){}
+}
+
+let planInfo = cargarPlan();
+
+// Verificar activación por URL
+function checkActivationURL(){
+  const params=new URLSearchParams(window.location.search);
+  const activate=params.get('activate');
+  if(!activate)return false;
+  const result=validarCodigo(activate);
+  if(result&&!result.error){
+    guardarPlan({...result,activadoEl:new Date().toISOString().slice(0,10)});
+    planInfo=cargarPlan();
+    // Limpiar URL
+    window.history.replaceState({},'',window.location.pathname);
+    return true;
+  }
+  return false;
+}
+
+// Admin mode
+function checkAdminURL(){
+  const params=new URLSearchParams(window.location.search);
+  return params.get('admin')==='true';
+}
+
+// Empresas (multi-RFC)
+function cargarEmpresas(){
+  try{return JSON.parse(localStorage.getItem('cf_empresas')||'[]')}catch(e){return[]}
+}
+function guardarEmpresas(){
+  try{localStorage.setItem('cf_empresas',JSON.stringify(empresas))}catch(e){}
+}
+let empresas=cargarEmpresas();
+let empresaActualId=localStorage.getItem('cf_emp_actual')||null;
+
+function getEmpresaActual(){
+  return empresas.find(e=>e.id===empresaActualId)||empresas[0]||null;
+}
+
+function seleccionarEmpresa(id){
+  empresaActualId=id;
+  localStorage.setItem('cf_emp_actual',id);
+  // Cargar facturas de esta empresa
+  try{facturas=JSON.parse(localStorage.getItem('cf_v3_'+id)||'[]')}catch(e){facturas=[]}
+  render();
+}
+
+function guardarFacturasEmpresa(){
+  if(!empresaActualId)return;
+  try{localStorage.setItem('cf_v3_'+empresaActualId,JSON.stringify(facturas))}catch(e){}
+}
+
+// Inicializar empresa por defecto si no hay ninguna
+function initEmpresas(){
+  if(empresas.length===0){
+    const emp={id:'emp_'+Date.now(),nombre:'Mi Empresa',rfc:''};
+    empresas.push(emp);
+    guardarEmpresas();
+  }
+  if(!empresaActualId||!empresas.find(e=>e.id===empresaActualId)){
+    empresaActualId=empresas[0].id;
+    localStorage.setItem('cf_emp_actual',empresaActualId);
+  }
+  // Cargar facturas de empresa actual
+  try{facturas=JSON.parse(localStorage.getItem('cf_v3_'+empresaActualId)||facturas.length?JSON.stringify(facturas):'[]')}catch(e){}
+}
+
+// ── VISTA: ONBOARDING (sin plan activo) ───────────────────────────────────────
+function vOnboarding(){
+  return`
+  <div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center">
+    <div style="font-size:60px;margin-bottom:16px">🧾</div>
+    <div style="font-size:22px;font-weight:800;margin-bottom:8px">Bienvenido a ContaFlow</div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:30px;line-height:1.6;max-width:280px">
+      Para usar ContaFlow necesitas un código de activación. Contáctanos para obtenerlo.
+    </div>
+    <div class="card" style="width:100%;max-width:320px;margin-bottom:16px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:10px">🔑 Ingresa tu código de activación</div>
+      <input type="text" id="codigo-input" placeholder="Pega aquí tu código" style="margin-bottom:10px;text-align:center;font-family:monospace">
+      <button class="btn btn-primary" onclick="activarCodigo()">Activar ContaFlow →</button>
+    </div>
+    <div style="font-size:10px;color:var(--text-3);margin-bottom:8px">¿No tienes código?</div>
+    <a href="https://wa.me/521XXXXXXXXXX?text=Hola,%20quiero%20activar%20ContaFlow" 
+       style="background:#25D366;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block">
+      📱 Contactar por WhatsApp
+    </a>
+    <div style="margin-top:20px">
+      <button onclick="activarDemo()" style="background:transparent;border:1px solid #334155;border-radius:8px;padding:8px 16px;font-size:10px;color:var(--text-3);cursor:pointer;font-family:inherit">
+        Probar versión demo gratuita
+      </button>
+    </div>
+  </div>`;
+}
+
+function activarCodigo(){
+  const input=document.getElementById('codigo-input')?.value?.trim();
+  if(!input){toast('Ingresa tu código de activación','err');return;}
+  const result=validarCodigo(input);
+  if(!result){toast('Código inválido o vencido','err');return;}
+  if(result.error){toast(result.error,'err');return;}
+  guardarPlan({...result,activadoEl:new Date().toISOString().slice(0,10)});
+  planInfo=cargarPlan();
+  toast('✅ ContaFlow activado — Plan '+PLAN_CONFIG[result.plan].nombre);
+  initEmpresas();
+  render();
+}
+
+function activarDemo(){
+  guardarPlan({plan:'demo',maxEmpresas:1,expiry:'2099-12',clienteNombre:'Usuario Demo',activadoEl:new Date().toISOString().slice(0,10)});
+  planInfo=cargarPlan();
+  toast('Modo demo activado');
+  initEmpresas();
+  render();
+}
+
+// ── VISTA: ADMIN PANEL ────────────────────────────────────────────────────────
+let adminAuth=false;
+let adminForm={plan:'basico',nombre:'',meses:12};
+let codigosGenerados=JSON.parse(localStorage.getItem('cf_admin_codigos')||'[]');
+
+function vAdmin(){
+  if(!adminAuth){
+    return`
+    <div style="min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px">
+      <div style="font-size:40px;margin-bottom:16px">🔐</div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:20px">Panel de Administración</div>
+      <div class="card" style="width:100%;max-width:300px">
+        <div style="font-size:10px;color:var(--text-3);margin-bottom:4px">Contraseña de administrador</div>
+        <input type="password" id="admin-pass" placeholder="Contraseña" style="margin-bottom:10px">
+        <button class="btn btn-primary" onclick="loginAdmin()">Entrar →</button>
+      </div>
+    </div>`;
+  }
+
+  const cfg=PLAN_CONFIG[adminForm.plan];
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div class="section-title" style="margin-bottom:0">🔐 Panel Admin</div>
+    <button onclick="adminAuth=false;render()" style="background:transparent;border:none;font-size:10px;color:var(--text-3);cursor:pointer;font-family:inherit">Salir</button>
+  </div>
+
+  <!-- Generar nuevo código -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-size:12px;font-weight:700;margin-bottom:12px">➕ Generar código de activación</div>
+    
+    <div style="margin-bottom:10px">
+      <div style="font-size:9px;color:var(--text-3);margin-bottom:4px">Nombre del cliente</div>
+      <input type="text" id="adm-nombre" value="${adminForm.nombre}" placeholder="Ana García López" oninput="adminForm.nombre=this.value">
+    </div>
+    
+    <div style="margin-bottom:10px">
+      <div style="font-size:9px;color:var(--text-3);margin-bottom:4px">Plan</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        ${['basico','pro','despacho'].map(p=>`
+          <button onclick="adminForm.plan='${p}';render()" style="border:1px solid ${adminForm.plan===p?PLAN_CONFIG[p].color:'#1E293B'};background:${adminForm.plan===p?PLAN_CONFIG[p].color+'22':'#111827'};color:${adminForm.plan===p?PLAN_CONFIG[p].color:'#64748B'};border-radius:8px;padding:8px 4px;font-size:10px;cursor:pointer;font-family:inherit;font-weight:${adminForm.plan===p?700:400}">
+            ${PLAN_CONFIG[p].nombre}<br><span style="font-size:8px">$${PLAN_CONFIG[p].precio}/mes</span>
+          </button>`).join('')}
+      </div>
+    </div>
+    
+    <div style="margin-bottom:12px">
+      <div style="font-size:9px;color:var(--text-3);margin-bottom:4px">Vigencia</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+        ${[['1','1 mes'],['3','3 meses'],['12','1 año']].map(([m,l])=>`
+          <button onclick="adminForm.meses=${m};render()" style="border:1px solid ${adminForm.meses==m?'#3B82F6':'#1E293B'};background:${adminForm.meses==m?'#1D4ED822':'#111827'};color:${adminForm.meses==m?'#60A5FA':'#64748B'};border-radius:8px;padding:8px 4px;font-size:10px;cursor:pointer;font-family:inherit">
+            ${l}
+          </button>`).join('')}
+      </div>
+    </div>
+
+    <div style="background:#1E293B;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:10px;color:var(--text-3)">
+      Plan: <span style="color:${cfg.color};font-weight:700">${cfg.nombre}</span> · 
+      Empresas: <span style="color:var(--text)">${cfg.maxEmpresas}</span> · 
+      Precio: <span style="color:#10B981">$${cfg.precio}/mes</span>
+    </div>
+    
+    <button class="btn btn-primary" onclick="generarNuevoCodigo()">🔑 Generar código y URL</button>
+  </div>
+
+  <!-- Código generado -->
+  <div id="codigo-resultado" style="display:none">
+    <div class="card" style="margin-bottom:14px;border-color:#10B981">
+      <div style="font-size:11px;font-weight:700;color:#10B981;margin-bottom:8px">✅ URL de activación generada</div>
+      <div id="url-generada" style="background:var(--bg);border-radius:6px;padding:8px;font-size:9px;color:var(--primary-l);font-family:monospace;word-break:break-all;margin-bottom:8px"></div>
+      <button onclick="copiarURL()" class="btn btn-secondary" style="font-size:11px">📋 Copiar URL</button>
+    </div>
+  </div>
+
+  <!-- Historial de códigos -->
+  ${codigosGenerados.length>0?`
+  <div class="section-title">Códigos generados (${codigosGenerados.length})</div>
+  ${codigosGenerados.slice().reverse().map(c=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:11px;font-weight:600">${c.nombre}</div>
+          <div style="font-size:9px;color:var(--text-3)">${c.plan} · Vence ${c.expiry} · ${c.fecha}</div>
+        </div>
+        <button onclick="recopiarURL('${c.url}')" style="background:#1E293B;border:1px solid #334155;border-radius:6px;padding:4px 8px;font-size:9px;color:var(--text-3);cursor:pointer;font-family:inherit">Copiar</button>
+      </div>
+    </div>`).join('')}
+  `:''}`;
+}
+
+function loginAdmin(){
+  const pass=document.getElementById('admin-pass')?.value;
+  if(pass===ADMIN_PASS){adminAuth=true;render();}
+  else toast('Contraseña incorrecta','err');
+}
+
+let ultimaURL='';
+function generarNuevoCodigo(){
+  if(!adminForm.nombre){toast('Ingresa el nombre del cliente','err');return;}
+  const url=generarCodigoURL(adminForm.plan,adminForm.nombre,parseInt(adminForm.meses));
+  ultimaURL=url;
+  const registro={nombre:adminForm.nombre,plan:adminForm.plan,expiry:new Date(new Date().setMonth(new Date().getMonth()+parseInt(adminForm.meses))).toISOString().slice(0,7),fecha:new Date().toLocaleDateString('es-MX'),url};
+  codigosGenerados.push(registro);
+  localStorage.setItem('cf_admin_codigos',JSON.stringify(codigosGenerados));
+  document.getElementById('codigo-resultado').style.display='block';
+  document.getElementById('url-generada').textContent=url;
+  toast('URL generada ✅');
+}
+
+function copiarURL(){
+  navigator.clipboard?.writeText(ultimaURL).catch(()=>{});
+  toast('URL copiada ✅');
+}
+
+function recopiarURL(url){
+  navigator.clipboard?.writeText(url).catch(()=>{});
+  toast('URL copiada ✅');
+}
+
+// ── SELECTOR DE EMPRESAS ──────────────────────────────────────────────────────
+function vEmpresas(){
+  const maxEmp=planInfo?planInfo.maxEmpresas:1;
+  const cfg=planInfo?PLAN_CONFIG[planInfo.plan]:PLAN_CONFIG.demo;
+  return`
+  <div class="section-title">🏢 Mis Empresas / Clientes</div>
+  <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+    <div style="font-size:10px;color:var(--text-3)">Plan <span style="color:${cfg.color};font-weight:700">${cfg.nombre}</span></div>
+    <div style="font-size:10px;color:var(--text-3)">${empresas.length}/${maxEmp} empresas</div>
+  </div>
+  ${empresas.map(e=>`
+    <div onclick="seleccionarEmpresa('${e.id}')" style="background:var(--surface2);border:1px solid ${empresaActualId===e.id?'#3B82F6':'#1E293B'};border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:${empresaActualId===e.id?'#60A5FA':'#E2E8F0'}">${e.nombre}</div>
+        <div style="font-size:9px;color:var(--text-3);margin-top:2px">${e.rfc||'RFC no definido'}</div>
+      </div>
+      ${empresaActualId===e.id?'<span style="color:#3B82F6;font-size:16px">✓</span>':'<span style="color:#334155;font-size:16px">›</span>'}
+    </div>`).join('')}
+  ${empresas.length<maxEmp?`
+    <button class="btn btn-secondary" style="margin-top:4px" onclick="mostrarFormEmpresa()">+ Agregar empresa / cliente</button>`:
+    `<div style="background:#1C1917;border:1px solid #F59E0B44;border-radius:8px;padding:10px;margin-top:4px;font-size:10px;color:var(--amber)">
+      Límite del plan alcanzado (${maxEmp} empresas). Actualiza a un plan superior para agregar más.
+    </div>`}
+  <div id="form-empresa" style="display:none" class="card" style="margin-top:12px">
+    <div style="font-size:11px;font-weight:700;margin-bottom:10px">Nueva empresa / cliente</div>
+    <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Nombre o razón social</div><input type="text" id="emp-nombre" placeholder="Ej: Papelería Express SA de CV"></div>
+    <div style="margin-bottom:10px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">RFC</div><input type="text" id="emp-rfc" placeholder="Ej: PEX981023AB2"></div>
+    <button class="btn btn-primary" onclick="agregarEmpresa()">Agregar →</button>
+  </div>`;
+}
+
+function mostrarFormEmpresa(){
+  const f=document.getElementById('form-empresa');
+  if(f)f.style.display=f.style.display==='none'?'block':'none';
+}
+
+function agregarEmpresa(){
+  const nombre=document.getElementById('emp-nombre')?.value||'';
+  const rfc=document.getElementById('emp-rfc')?.value||'';
+  if(!nombre){toast('Ingresa el nombre de la empresa','err');return;}
+  const emp={id:'emp_'+Date.now(),nombre,rfc};
+  empresas.push(emp);
+  guardarEmpresas();
+  seleccionarEmpresa(emp.id);
+  toast('Empresa agregada ✅');
+}
+
+
+// ── DATOS NÓMINA ──────────────────────────────────────────────────────────────
+function cargarNominas(){try{return JSON.parse(localStorage.getItem('cf_nominas')||'[]');}catch(e){return[];}}
+function guardarNominas(){try{localStorage.setItem('cf_nominas',JSON.stringify(nominas));}catch(e){}}
+var nominas=cargarNominas();
+
+function provPartidasNomina(nom){
+  var concepto='Nómina '+(nom.nomina.tipoNomina==='O'?'Ord':'Ext')+' | '+nom.fecha;
+  var rows=[
+    {cuenta:'5100-001',nombre:'Sueldos y salarios',concepto:concepto,cargo:nom.nomina.totalPercepciones,abono:0},
+  ];
+  if(nom.nomina.isrRetenidoNomina>0)
+    rows.push({cuenta:'2210-001',nombre:'ISR nómina retenido',concepto:concepto,cargo:0,abono:nom.nomina.isrRetenidoNomina});
+  if(nom.nomina.imssRetenido>0)
+    rows.push({cuenta:'2220-001',nombre:'IMSS trabajador retenido',concepto:concepto,cargo:0,abono:nom.nomina.imssRetenido});
+  if(nom.nomina.infonavitRetenido>0)
+    rows.push({cuenta:'2230-001',nombre:'INFONAVIT retenido',concepto:concepto,cargo:0,abono:nom.nomina.infonavitRetenido});
+  rows.push({cuenta:'2200-001',nombre:'Sueldos por pagar',concepto:concepto,cargo:0,abono:nom.nomina.netoAPagar});
+  return rows;
+}
+
+// ── PERSISTENCIA ──────────────────────────────────────────────────────────────
+function cargar(){try{const s=localStorage.getItem('cf_v3');return s?JSON.parse(s):[]}catch(e){return[]}}
+function guardar(){guardarFacturasEmpresa();}
+let facturas=cargar(); // will be overridden by initEmpresas
+let st={view:'dashboard',cfdi:null,expanded:null,filter:'todas',pagoBanco:'1020-001',pagoRef:'',pagoFecha:new Date().toISOString().slice(0,10),pricingStep:'planes',plan:'pro',metodo:'spei',coNombre:'',coEmail:''};
+
+// ── SAT DESCARGA MASIVA ───────────────────────────────────────────────────────
+var satState={token:null,rfc:null,idSolicitud:null,paquetes:[],estado:null,paso:0,log:[]};
+var SAT_FN = (location.protocol==='file:') ? null : '/.netlify/functions/sat-descarga';
+
+function satLog(msg){satState.log.unshift('['+new Date().toLocaleTimeString('es-MX')+'] '+msg);if(satState.log.length>20)satState.log.pop();}
+
+async function satCall(payload){
+  if(!SAT_FN){toast('Solo disponible en la versión online (Netlify)','err');throw new Error('Sin backend');}
+  const res=await fetch(SAT_FN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const data=await res.json();
+  if(!data.ok) throw new Error(data.error||'Error desconocido del SAT');
+  return data;
+}
+
+async function satAutenticar(){
+  var cer=document.getElementById('sat-cer')?.files[0];
+  var key=document.getElementById('sat-key')?.files[0];
+  var pass=document.getElementById('sat-pass')?.value||'';
+  if(!cer||!key||!pass){toast('Selecciona .cer, .key y contraseña','err');return;}
+  toast('Conectando con el SAT...','info');
+  satState.log=[];satState.paso=1;
+  try{
+    var [cerB64,keyB64]=await Promise.all([fileToB64(cer),fileToB64(key)]);
+    var r=await satCall({action:'autenticar',certBase64:cerB64,keyBase64:keyB64,keyPass:pass});
+    satState.token=r.token;satState.rfc=r.rfc;satState.paso=2;
+    satLog('Autenticado como '+r.rfc);
+    toast('Conectado al SAT ✅ RFC: '+r.rfc);
+    render();
+  }catch(e){satLog('Error auth: '+e.message);toast(e.message,'err');satState.paso=0;render();}
+}
+
+async function satSolicitar(){
+  if(!satState.token){toast('Primero conéctate al SAT','err');return;}
+  var fi=document.getElementById('sat-fi')?.value;
+  var ff=document.getElementById('sat-ff')?.value;
+  var tipo=document.getElementById('sat-tipo')?.value||'R';
+  var tipoSol=document.getElementById('sat-sol')?.value||'CFDI';
+  if(!fi||!ff){toast('Selecciona el rango de fechas','err');return;}
+  toast('Solicitando descarga al SAT...','info');
+  try{
+    var r=await satCall({action:'solicitar',token:satState.token,rfc:satState.rfc,fechaInicio:fi,fechaFinal:ff,tipoComp:tipo,tipoSol:tipoSol});
+    satState.idSolicitud=r.idSolicitud;satState.estado='1';satState.paso=3;
+    satLog('Solicitud enviada: '+r.idSolicitud+' (código '+r.codEstatus+')');
+    toast('Solicitud enviada ✅');
+    render();
+  }catch(e){satLog('Error solicitud: '+e.message);toast(e.message,'err');}
+}
+
+async function satVerificar(){
+  if(!satState.idSolicitud){toast('Primero envía la solicitud','err');return;}
+  toast('Verificando estado...','info');
+  try{
+    var r=await satCall({action:'verificar',token:satState.token,rfc:satState.rfc,idSolicitud:satState.idSolicitud});
+    satState.estado=r.estado;satState.paquetes=r.paquetes||[];
+    var msgs={1:'Aceptada',2:'En proceso',3:'Lista para descargar ✅',4:'Error en solicitud',5:'Expirada'};
+    satLog('Estado: '+(msgs[r.estado]||r.estado)+' | CFDIs: '+r.numCfdis+' | Paquetes: '+satState.paquetes.length);
+    if(r.estado==='3'){satState.paso=4;toast('¡Lista! '+satState.paquetes.length+' paquete(s) para descargar ✅');}
+    else toast('Estado: '+(msgs[r.estado]||r.estado)+' (CFDIs: '+r.numCfdis+')','info');
+    render();
+  }catch(e){satLog('Error verificar: '+e.message);toast(e.message,'err');}
+}
+
+async function satDescargarTodo(){
+  if(!satState.paquetes.length){toast('No hay paquetes disponibles','err');return;}
+  var total=0,dups=0,errs=0;
+  toast('Descargando '+satState.paquetes.length+' paquete(s)...','info');
+  for(var i=0;i<satState.paquetes.length;i++){
+    var paq=satState.paquetes[i];
+    try{
+      var r=await satCall({action:'descargar',token:satState.token,rfc:satState.rfc,idPaquete:paq});
+      (r.xmlFiles||[]).forEach(function(f){
+        try{
+          var cfdi=parseCFDI(f.contenido);
+          if(facturas.some(function(x){return x.uuid===cfdi.uuid;})){dups++;}
+          else{
+            facturas.unshift({id:'f'+Date.now()+'_'+total,uuid:cfdi.uuid,nombre:cfdi.nombre,rfc:cfdi.rfc,
+              fecha:cfdi.fecha,subtotal:cfdi.subtotal,iva:cfdi.iva,total:cfdi.total,concepto:cfdi.concepto,
+              isrRetencion:cfdi.isrRetencion||0,ivaRetencion:cfdi.ivaRetencion||0,
+              regimenFiscal:cfdi.regimenFiscal||'',regimenNombre:cfdi.regimenNombre||'',status:'provisionada'});
+            total++;
+          }
+        }catch(ex){errs++;console.error('XML',f.nombre,ex.message);}
+      });
+      satLog('Paquete '+(i+1)+'/'+satState.paquetes.length+': '+(r.xmlFiles||[]).length+' XMLs');
+    }catch(e){errs++;satLog('Error paquete '+paq+': '+e.message);}
+  }
+  guardar();
+  var msg=total+' facturas importadas';
+  if(dups>0)msg+=' | '+dups+' duplicadas';
+  if(errs>0)msg+=' | '+errs+' errores';
+  toast(msg+(total>0?' ✅':''));
+  satState.paso=5;render();
+}
+
+function satReset(){satState={token:null,rfc:null,idSolicitud:null,paquetes:[],estado:null,paso:0,log:[]};render();}
+
+function fileToB64(file){
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(e){
+      var ab=e.target.result;
+      var b=new Uint8Array(ab);var s='';
+      for(var i=0;i<b.length;i++)s+=String.fromCharCode(b[i]);
+      res(btoa(s));
+    };
+    r.onerror=rej;
+    r.readAsArrayBuffer(file);
+  });
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const fmt=n=>'$'+Number(n).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+function badge(s){var m={pendiente:['var(--amber)','Pendiente'],provisionada:['var(--primary-l)','Provisionada'],pagada:['var(--green)','Pagada']};var info=m[s]||['var(--text-3)',s];return '<span class="badge" style="background:'+info[0].replace(')',', .12)').replace('var','rgba').replace('(--amber','(234,179,8').replace('(--primary-l','(59,130,246').replace('(--green','(34,197,94').replace('(--text-3','(71,85,105')+';color:'+info[0]+'">'+info[1]+'</span>';}
+let tt;
+function toast(msg,type){type=type||'ok';var el=document.getElementById('toast-el');var bg=type==='ok'?'rgba(22,101,52,.97)':type==='err'?'rgba(127,29,29,.97)':'rgba(8,47,73,.97)';var bc=type==='ok'?'rgba(34,197,94,.3)':type==='err'?'rgba(239,68,68,.3)':'rgba(6,182,212,.3)';el.style.cssText='display:block;background:'+bg+';border:1px solid '+bc;el.textContent=(type==='ok'?'✓  ':type==='err'?'✕  ':'·  ')+msg;clearTimeout(tt);tt=setTimeout(function(){el.style.display='none';},3200);}
+
+// ── PARSER CFDI (con retenciones ISR e IVA) ───────────────────────────────────
+function parseCFDI(xml){
+  const doc=new DOMParser().parseFromString(xml,'text/xml');
+  if(doc.documentElement.nodeName==='parsererror')throw new Error('XML inválido');
+  const ns='http://www.sat.gob.mx/cfd/4',tns='http://www.sat.gob.mx/TimbreFiscalDigital';
+  const root=doc.documentElement;
+  const emisor=doc.getElementsByTagNameNS(ns,'Emisor')[0];
+  const tfd=doc.getElementsByTagNameNS(tns,'TimbreFiscalDigital')[0];
+  const c0=doc.getElementsByTagNameNS(ns,'Concepto')[0];
+  // IVA trasladado
+  let iva=0;
+  for(const t of doc.getElementsByTagNameNS(ns,'Traslado'))
+    if(t.getAttribute('Impuesto')==='002')iva+=parseFloat(t.getAttribute('Importe')||0);
+  // Retenciones ISR (001) e IVA (002)
+  let isrRet=0,ivaRet=0;
+  for(const r of doc.getElementsByTagNameNS(ns,'Retencion')){
+    if(r.getAttribute('Impuesto')==='001')isrRet+=parseFloat(r.getAttribute('Importe')||0);
+    if(r.getAttribute('Impuesto')==='002')ivaRet+=parseFloat(r.getAttribute('Importe')||0);
+  }
+  const regimenFiscal = emisor?.getAttribute('RegimenFiscal')||'';
+  const REGIMENES = {
+    '601':'General Personas Morales',
+    '606':'Arrendamiento',
+    '612':'Act. Empresarial y Profesional',
+    '621':'Incorporación Fiscal',
+    '625':'RESICO Personas Morales',
+    '626':'RESICO Personas Físicas',
+    '630':'Enajenación de Acciones',
+  };
+  return{
+    uuid:tfd?.getAttribute('UUID')||'LOCAL-'+Date.now(),
+    fecha:(root.getAttribute('Fecha')||'').slice(0,10),
+    nombre:emisor?.getAttribute('Nombre')||'Proveedor',
+    rfc:emisor?.getAttribute('Rfc')||'',
+    subtotal:parseFloat(root.getAttribute('SubTotal')||0),
+    iva:parseFloat(iva.toFixed(2)),
+    total:parseFloat(root.getAttribute('Total')||0),
+    isrRetencion:parseFloat(isrRet.toFixed(2)),
+    ivaRetencion:parseFloat(ivaRet.toFixed(2)),
+    concepto:c0?.getAttribute('Descripcion')||'',
+    regimenFiscal,
+    regimenNombre:REGIMENES[regimenFiscal]||'Régimen no identificado',
+  };
+}
+
+// ── PARTIDAS CON RETENCIONES ──────────────────────────────────────────────────
+function provPartidas(c){
+  const concepto = (c.concepto||'Sin descripción').slice(0,40);
+  const d = 'Fact. '+(c.rfc||'')+ (concepto?' | '+concepto:'');
+  const rows=[
+    {cuenta:'6010-001',nombre:'Gastos generales',    concepto:d,                  cargo:c.subtotal,abono:0},
+    {cuenta:'1180-001',nombre:'IVA acreditable',      concepto:'IVA acreditable 16%',cargo:c.iva,   abono:0},
+  ];
+  if((c.isrRetencion||0)>0)rows.push({cuenta:'2150-001',nombre:'ISR retenido por pagar',concepto:'Ret. ISR '+(c.rfc||''),cargo:0,abono:c.isrRetencion});
+  if((c.ivaRetencion||0)>0)rows.push({cuenta:'2160-001',nombre:'IVA retenido por pagar',concepto:'Ret. IVA '+(c.rfc||''),cargo:0,abono:c.ivaRetencion});
+  rows.push({cuenta:'2100-001',nombre:'Proveedores',concepto:d,cargo:0,abono:c.total});
+  return rows;
+}
+
+function pagoPartidas(c,banco){
+  return[
+    {cuenta:'2100-001',nombre:'Proveedores',cargo:c.total,abono:0},
+    {cuenta:banco,nombre:'Bancos',cargo:0,abono:c.total},
+  ];
+}
+
+function tabla(rows){
+  const tc=rows.reduce((s,r)=>s+r.cargo,0),ta=rows.reduce((s,r)=>s+r.abono,0);
+  return`<table><tr><th>Cuenta</th><th>Nombre</th><th>Cargo</th><th>Abono</th></tr>${rows.map(r=>`<tr><td style="color:var(--primary-l);font-family:monospace;font-size:9px">${r.cuenta}</td><td style="color:var(--text-2)">${r.nombre}</td><td style="color:${r.cargo?'#4ADE80':'#1E293B'};font-weight:${r.cargo?700:400}">${r.cargo?fmt(r.cargo):'—'}</td><td style="color:${r.abono?'#F87171':'#1E293B'};font-weight:${r.abono?700:400}">${r.abono?fmt(r.abono):'—'}</td></tr>`).join('')}<tr style="border-top:2px solid #1E293B"><td colspan="2" style="padding:6px 4px;color:var(--text-3);font-weight:700;font-size:10px">TOTALES</td><td style="padding:6px 4px;color:var(--green);font-weight:700">${fmt(tc)}</td><td style="padding:6px 4px;color:var(--red);font-weight:700">${fmt(ta)}</td></tr></table>`;
+}
+
+// ── MODAL ─────────────────────────────────────────────────────────────────────
+function showModal(t,m,fn){const el=document.getElementById('modal-el');el.style.display='block';el.innerHTML=`<div class="modal-bg"><div class="modal"><div style="font-size:14px;font-weight:700;margin-bottom:8px">${t}</div><div style="font-size:11px;color:var(--text-2);margin-bottom:18px;line-height:1.6">${m}</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn btn-secondary" onclick="document.getElementById('modal-el').style.display='none'">Cancelar</button><button class="btn" style="background:#DC2626;color:white" onclick="(${fn})();document.getElementById('modal-el').style.display='none'">Eliminar</button></div></div></div>`}
+
+// ── HEADER + NAV ──────────────────────────────────────────────────────────────
+function header(){
+  var emp=getEmpresaActual();
+  var isBeta=planInfo&&planInfo.clienteNombre==='Beta Gratuita';
+  var logoEl=LOGO.replace('width="32" height="32"','class="hdr-logo"');
+  return '<div id="app-header">'
+    +'<div class="hdr-brand">'+logoEl
+    +'<div><div class="hdr-name">ContaFlow</div>'
+    +'<div class="hdr-emp">'+(emp?emp.nombre.slice(0,24):'del XML a la póliza')+'</div>'
+    +'</div></div>'
+    +'<div class="hdr-right">'
+    +(isBeta?'<span class="hdr-badge">BETA</span>':'')
+    +'<div class="hdr-count"><div class="hdr-num">'+facturas.length+'</div>'
+    +'<div class="hdr-label">facturas</div></div>'
+    +'</div></div>';
+}
+
+
+function nav(){
+  var items=[['dashboard','📊','Inicio'],['nueva','➕','Nueva'],
+    ['historial','📋','Historial'],['nomina','📋','Nómina'],['misdatos','☁️','Datos']];
+  var html='<nav id="app-nav">';
+  items.forEach(function(it){
+    var a=st.view===it[0];
+    html+='<button class="nb'+(a?' active':'')
+      +'" onclick="goto('+JSON.stringify(it[0])+')">'
+      +'<div class="nb-bar"></div>'
+      +'<span class="nb-ic">'+it[1]+'</span>'
+      +'<span class="nb-lb">'+it[2]+'</span>'
+      +'</button>';
+  });
+  return html+'</nav>';
+}
+
+
+// ── VIEW: DASHBOARD ───────────────────────────────────────────────────────────
+function vDashboard(){
+  var pend=facturas.filter(function(f){return f.status==='pendiente';}).length;
+  var prov=facturas.filter(function(f){return f.status==='provisionada';}).length;
+  var tot=facturas.filter(function(f){return f.status!=='pagada';}).reduce(function(s,f){return s+f.total;},0);
+  if(!facturas.length)return`<div class="hero"><div style="position:relative;z-index:1"><div style="font-size:36px;margin-bottom:12px">🧾</div><div style="font-size:18px;font-weight:800;margin-bottom:6px">Bienvenida a ContaFlow</div><div style="font-size:12px;color:var(--text-3);line-height:1.6;margin-bottom:18px">Registra tu primera factura y ContaFlow generará la póliza contable automáticamente — incluyendo retenciones de ISR e IVA.</div><button class="btn btn-primary" onclick="goto('nueva')">➕ Registrar primera factura</button></div></div><div class="card"><div style="font-size:11px;font-weight:700;margin-bottom:10px">¿Cómo funciona?</div>${[['📎','Sube el XML del SAT','O usa los demos para probar'],['⚙️','ContaFlow lo procesa','Lee proveedor, monto, IVA y retenciones'],['📒','Genera la póliza','Provisión y pago automáticos'],['📊','Auxiliar contable','Saldos por cuenta actualizados']].map(([i,t,s])=>`<div style="display:flex;gap:12px;padding:7px 0;border-bottom:1px solid #1E293B"><div style="font-size:18px;flex-shrink:0">${i}</div><div><div style="font-size:11px;font-weight:600">${t}</div><div style="font-size:10px;color:var(--text-3)">${s}</div></div></div>`).join('')}</div>`;
+  return`<div class="stat-grid"><div style="background:var(--surface2);border-radius:9px;padding:10px 8px;border-bottom:2px solid var(--amber)"><div style="font-size:22px;font-weight:800;color:var(--amber)">${pend}</div><div style="font-size:9px;color:var(--text-3);margin-top:2px">Pendientes</div></div><div style="background:var(--surface2);border-radius:9px;padding:10px 8px;border-bottom:2px solid var(--primary-l)"><div style="font-size:22px;font-weight:800;color:var(--primary-l)">${prov}</div><div style="font-size:9px;color:var(--text-3);margin-top:2px">Provisionadas</div></div><div style="background:var(--surface2);border-radius:9px;padding:10px 8px;border-bottom:2px solid var(--cyan)"><div style="font-size:14px;font-weight:800;color:var(--cyan)">${fmt(tot)}</div><div style="font-size:9px;color:var(--text-3);margin-top:2px">Por pagar</div></div></div>
+  <div class="section-title">Facturas recientes</div>${facturas.slice(0,5).map(f=>`<div class="factura-card" onclick="goto('historial')" style="cursor:pointer"><div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.nombre}</div><div style="font-size:9px;color:var(--text-3);margin-top:2px">${f.fecha}${(f.isrRetencion>0||f.ivaRetencion>0)?' · <span style="color:var(--amber)">Con retenciones</span>':''}</div></div><div style="text-align:right;flex-shrink:0;margin-left:10px"><div style="font-size:13px;font-weight:700">${fmt(f.total)}</div>${badge(f.status)}</div></div></div>`).join('')}
+  <button class="btn btn-primary" style="margin-top:14px" onclick="goto('nueva')">➕ Registrar nueva factura</button>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+    <button class="btn btn-secondary" onclick="goto('papeles')" style="font-size:11px">📄 Papeles de trabajo</button>
+    <button class="btn btn-secondary" onclick="goto('regimenes')" style="font-size:11px">🏛️ Módulo régimen</button>
+  </div>`;
+}
+
+// ── VIEW: NUEVA FACTURA ───────────────────────────────────────────────────────
+function vNueva(){
+  if(st.cfdi){
+    const c=st.cfdi;
+    var campos=c.tipoCFDI==='N'&&c.nomina?[
+      ['Empresa/Emisor',c.nombre],['RFC Emisor',c.rfc],
+      ['Fecha pago',c.nomina.fechaPago||c.fecha],
+      ['Empleado N°',c.nomina.numEmpleado],
+      ['Puesto',c.nomina.puesto],
+      ['Días pagados',c.nomina.diasPagados],
+      ['Total percepciones',fmt(c.nomina.totalPercepciones)],
+      ['ISR retenido',fmt(c.nomina.isrRetenidoNomina)],
+      ['IMSS retenido',fmt(c.nomina.imssRetenido)],
+      ['Neto a pagar',fmt(c.nomina.netoAPagar)],
+    ]:[
+      ['Proveedor',c.nombre],['RFC',c.rfc],['Fecha',c.fecha],
+      ['Subtotal',fmt(c.subtotal)],['IVA 16%',fmt(c.iva)],
+    ];
+    if(c.tipoCFDI!=='N'){
+      if(c.isrRetencion>0)campos.push(['ISR Retenido',fmt(c.isrRetencion)]);
+      if(c.ivaRetencion>0)campos.push(['IVA Retenido',fmt(c.ivaRetencion)]);
+      campos.push(['Total',fmt(c.total)],['Concepto',c.concepto]);
+    }
+    return`<div class="section-title">Nueva Factura</div>
+    <div style="background:#071A10;border:1px solid #166534;border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="background:#10B981;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px">✓</div><div style="font-size:12px;font-weight:700;color:var(--green)">XML leído correctamente</div></div>
+      ${campos.map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:11px;border-bottom:1px solid #166534"><span style="color:#6EE7B7;flex-shrink:0">${k}</span><span style="color:var(--text);font-weight:600;text-align:right;margin-left:8px">${v}</span></div>`).join('')}
+    </div>
+    ${(c.isrRetencion>0||c.ivaRetencion>0)?`<div style="background:#1C1917;border:1px solid #F59E0B44;border-radius:8px;padding:10px;margin-bottom:12px;font-size:10px;color:var(--amber)">⚠️ Factura con retenciones — se incluirán cuentas 2150 (ISR) y 2160 (IVA) en la póliza</div>`:''}
+    <div class="card" style="margin-bottom:14px"><div style="font-size:11px;font-weight:700;margin-bottom:10px;color:var(--text-2)">${c.tipoCFDI==='N'?'📋 Póliza de nómina que se generará':'📒 Póliza de provisión que se generará'}</div>${tabla(c.tipoCFDI==='N'&&c.nomina?provPartidasNomina({fecha:c.fecha,nomina:c.nomina}):provPartidas(c))}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn btn-secondary" onclick="st.cfdi=null;render()">← Cambiar</button><button class="btn btn-primary" onclick="confirmarFactura()">Registrar →</button></div>`;
+  }
+  return`<div class="section-title">Nueva Factura</div>
+  <div class="drop-zone" onclick="document.getElementById('xml-input').click()">
+    <div style="width:56px;height:56px;background:linear-gradient(135deg,#1D4ED8,#0EA5E9);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 12px">📎</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text)">Selecciona uno o varios XML del SAT</div>
+    <div style="font-size:11px;color:var(--text-3);margin-top:6px">Puedes seleccionar múltiples archivos a la vez</div>
+  </div>
+  <div style="text-align:center;color:#334155;font-size:12px;margin:12px 0">— o prueba con un ejemplo —</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <button class="btn btn-secondary" onclick="usarDemo(false)" style="font-size:11px">🧾 Ejemplo: Factura simple</button>
+    <button class="btn btn-secondary" onclick="usarDemo(true)" style="font-size:11px">🔖 Ejemplo: Con retenciones</button>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px">💡 Retenciones soportadas</div>
+    <div style="font-size:10px;color:var(--text-3);line-height:1.7">
+      ✓ ISR retenido (cuenta 2150-001)<br>
+      ✓ IVA retenido (cuenta 2160-001)<br>
+      ✓ Honorarios profesionales<br>
+      ✓ Arrendamiento<br>
+      ✓ Servicios con retención
+    </div>
+  </div>`;
+}
+
+// ── VIEW: HISTORIAL ───────────────────────────────────────────────────────────
+function vHistorial(){
+  const fl=st.filter==='todas'?facturas:facturas.filter(f=>f.status===st.filter);
+  return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px"><div class="section-title" style="margin-bottom:0">Historial (${facturas.length})</div><button onclick="goto('auxiliar')" style="background:#1E293B;border:1px solid #334155;border-radius:6px;padding:3px 8px;font-size:9px;color:var(--text-3);cursor:pointer;font-family:inherit">📈 Auxiliar</button></div>${facturas.length?`<button style="background:transparent;border:none;font-size:10px;color:var(--text-3);cursor:pointer;font-family:inherit" onclick="showModal('Borrar todo','¿Eliminar todas las facturas?',()=>{facturas=[];guardar();st.filter='todas';st.expanded=null;render();toast('Historial borrado')})">🗑 Borrar todo</button>`:''}
+  </div>
+  <div class="filter-row">${[['todas','Todas'],['pendiente','Pendientes'],['provisionada','Provisionadas'],['pagada','Pagadas']].map(([v,l])=>`<button class="filter-btn" style="${st.filter===v?'background:#1D4ED822;border-color:#1D4ED8;color:#3B82F6;font-weight:700':''}" onclick="st.filter='${v}';st.expanded=null;render()">${l}</button>`).join('')}</div>
+  ${fl.length===0?`<div style="text-align:center;padding:40px;color:var(--text-3);font-size:12px">${facturas.length===0?'Sin facturas registradas':'Sin facturas en este filtro'}</div>`:''}
+  ${fl.map(f=>{const isExp=st.expanded===f.id;const prov=provPartidas({rfc:f.rfc,concepto:f.concepto,subtotal:f.subtotal,iva:f.iva,total:f.total,isrRetencion:f.isrRetencion||0,ivaRetencion:f.ivaRetencion||0});
+  return`<div class="factura-card"><div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="st.expanded=st.expanded==='${f.id}'?null:'${f.id}';render()"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.nombre}</div><div style="font-size:9px;color:var(--text-3);margin-top:2px">${f.fecha}${(f.isrRetencion>0||f.ivaRetencion>0)?' · <span style="color:var(--amber)">Retenciones</span>':''}</div></div><div style="text-align:right;flex-shrink:0;margin-left:10px"><div style="font-size:13px;font-weight:700">${fmt(f.total)}</div>${badge(f.status)}</div></div>
+  ${isExp?`<div style="padding:12px 14px;border-top:1px solid #1E293B">
+    <div style="font-size:10px;font-weight:700;color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Póliza de Provisión</div>
+    ${tabla(prov)}
+    ${f.status!=='pagada'?`<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:10px">💳 Registrar Pago</div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:4px">Cuenta bancaria</div><input type="text" id="pb-${f.id}" value="${st.pagoBanco}" placeholder="1020-001"></div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:4px">Referencia</div><input type="text" id="pr-${f.id}" value="${st.pagoRef}" placeholder="REF-20260809-001"></div>
+      <div style="margin-bottom:12px"><div style="font-size:9px;color:var(--text-3);margin-bottom:4px">Fecha de pago</div><input type="date" id="pf-${f.id}" value="${st.pagoFecha}"></div>
+      <button class="btn btn-success" onclick="regPago('${f.id}')">Confirmar pago ✅</button>
+    </div>`:`<div style="background:#071A10;border:1px solid #166534;border-radius:10px;padding:10px;margin-top:12px;text-align:center;font-size:11px;color:var(--green);font-weight:600">✅ Factura pagada — ciclo cerrado</div>`}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+              <button class="btn" style="background:linear-gradient(135deg,#7C3AED,#6D28D9);color:white;font-size:11px" onclick="exportarPDF('${f.id}')">📄 Exportar PDF</button>
+              <button class="btn" style="background:linear-gradient(135deg,#059669,#047857);color:white;font-size:11px" onclick="exportarXML('${f.id}')">🗂 Exportar XML</button>
+            </div>
+            <button class="btn btn-danger" style="margin-top:8px" onclick="showModal('Eliminar factura','¿Eliminar la factura de '+(f.nombre||'esta factura').replace(/\'/g,"'")+' ?',()=>{facturas=facturas.filter(x=>x.id!=='${f.id}');guardar();st.expanded=null;render();toast('Factura eliminada')})">🗑 Eliminar</button>
+  </div>`:''}
+  </div>`;}).join('')}`;
+}
+
+// ── VIEW: AUXILIAR CONTABLE GENERAL ──────────────────────────────────────────
+function vAuxiliar(){
+  if(!facturas.length)return`<div style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:12px">📈</div><div style="font-size:13px;color:var(--text-3)">Sin movimientos aún</div><div style="font-size:11px;color:#334155;margin-top:6px">Registra facturas para ver el auxiliar</div></div>`;
+  
+  const cuentas={};
+  facturas.forEach(f=>{
+    const partidas=provPartidas({rfc:f.rfc,concepto:f.concepto,subtotal:f.subtotal,iva:f.iva,total:f.total,isrRetencion:f.isrRetencion||0,ivaRetencion:f.ivaRetencion||0});
+    partidas.forEach(p=>{
+      if(!cuentas[p.cuenta])cuentas[p.cuenta]={nombre:p.nombre,movs:[],totalCargo:0,totalAbono:0};
+      cuentas[p.cuenta].movs.push({fecha:f.fecha,concepto:f.nombre.slice(0,25),cargo:p.cargo,abono:p.abono});
+      cuentas[p.cuenta].totalCargo+=p.cargo;
+      cuentas[p.cuenta].totalAbono+=p.abono;
+    });
+  });
+
+  const totalGral={cargo:0,abono:0};
+  Object.values(cuentas).forEach(c=>{totalGral.cargo+=c.totalCargo;totalGral.abono+=c.totalAbono});
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="section-title" style="margin-bottom:0">Auxiliar Contable</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font-size:9px;color:var(--text-3)">${Object.keys(cuentas).length} cuentas</div>
+      <button onclick="exportAuxiliar()" style="background:#059669;border:none;border-radius:8px;padding:6px 10px;font-size:10px;color:white;cursor:pointer;font-family:inherit;font-weight:700">📊 Excel</button>
+    </div>
+  </div>
+  <div style="background:var(--surface2);border:1px solid #1D4ED844;border-radius:10px;padding:10px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <div style="text-align:center"><div style="font-size:9px;color:var(--text-3);margin-bottom:2px">TOTAL CARGOS</div><div style="font-size:13px;font-weight:700;color:var(--green)">${fmt(totalGral.cargo)}</div></div>
+    <div style="text-align:center"><div style="font-size:9px;color:var(--text-3);margin-bottom:2px">TOTAL ABONOS</div><div style="font-size:13px;font-weight:700;color:var(--red)">${fmt(totalGral.abono)}</div></div>
+  </div>
+  ${Object.entries(cuentas).map(([cuenta,data])=>{
+    let saldo=0;
+    return`<div class="card" style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <div style="font-size:12px;font-weight:700;color:var(--primary-l);font-family:monospace">${cuenta}</div>
+        <div style="font-size:10px;color:${(data.totalCargo-data.totalAbono)>=0?'#4ADE80':'#F87171'};font-weight:700">Saldo: ${fmt(Math.abs(data.totalCargo-data.totalAbono))}</div>
+      </div>
+      <div style="font-size:10px;color:var(--text-3);margin-bottom:8px">${data.nombre}</div>
+      <table>
+        <tr><th>Fecha</th><th>Concepto</th><th>Cargo</th><th>Abono</th><th>Saldo</th></tr>
+        ${data.movs.map(m=>{saldo+=(m.cargo-m.abono);return`<tr>
+          <td style="color:var(--text-3);font-size:9px">${m.fecha}</td>
+          <td style="color:var(--text-2);font-size:9px">${m.concepto}</td>
+          <td style="color:${m.cargo?'#4ADE80':'#1E293B'}">${m.cargo?fmt(m.cargo):'—'}</td>
+          <td style="color:${m.abono?'#F87171':'#1E293B'}">${m.abono?fmt(m.abono):'—'}</td>
+          <td style="color:var(--text);font-weight:600;font-size:9px">${fmt(Math.abs(saldo))}</td>
+        </tr>`}).join('')}
+        <tr style="border-top:2px solid #1E293B">
+          <td colspan="2" style="padding:5px 4px;color:var(--text-3);font-weight:700;font-size:9px">TOTALES</td>
+          <td style="padding:5px 4px;color:var(--green);font-weight:700">${fmt(data.totalCargo)}</td>
+          <td style="padding:5px 4px;color:var(--red);font-weight:700">${fmt(data.totalAbono)}</td>
+          <td style="padding:5px 4px;color:${(data.totalCargo-data.totalAbono)>=0?'#4ADE80':'#F87171'};font-weight:700">${fmt(Math.abs(data.totalCargo-data.totalAbono))}</td>
+        </tr>
+      </table>
+    </div>`;
+  }).join('')}`;
+}
+
+function exportAuxiliar(){
+  const cuentas={};
+  facturas.forEach(function(f){
+    const partidas=provPartidas({rfc:f.rfc,concepto:f.concepto,subtotal:f.subtotal,iva:f.iva,total:f.total,isrRetencion:f.isrRetencion||0,ivaRetencion:f.ivaRetencion||0});
+    partidas.forEach(function(p){
+      if(!cuentas[p.cuenta])cuentas[p.cuenta]={nombre:p.nombre,movs:[],totalCargo:0,totalAbono:0};
+      cuentas[p.cuenta].movs.push({fecha:f.fecha,concepto:f.nombre.slice(0,40),cargo:p.cargo,abono:p.abono});
+      cuentas[p.cuenta].totalCargo+=p.cargo;
+      cuentas[p.cuenta].totalAbono+=p.abono;
+    });
+  });
+  var filas=[['CONTAFLOW MX — AUXILIAR CONTABLE'],['Generado: '+new Date().toLocaleDateString('es-MX')],[]];
+  Object.entries(cuentas).forEach(function(entry){
+    var cuenta=entry[0];var data=entry[1];
+    filas.push([cuenta+' — '+data.nombre]);
+    filas.push(['Fecha','Concepto','Cargo','Abono','Saldo']);
+    var saldo=0;
+    data.movs.forEach(function(m){
+      saldo+=(m.cargo-m.abono);
+      filas.push([m.fecha,m.concepto,m.cargo||0,m.abono||0,saldo]);
+    });
+    filas.push(['','TOTALES',data.totalCargo,data.totalAbono,data.totalCargo-data.totalAbono]);
+    filas.push([]);
+  });
+  var bom='﻿';
+  var csv=bom+filas.map(function(r){return r.map(function(c){var s=String(c===null||c===undefined?'':c);return(s.includes(',')||s.includes('"')||s.includes('\n'))?'"'+s.replace(/"/g,'""')+'"':s;}).join(',');}).join('\r\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download='Auxiliar_Contable_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.style.display='none';document.body.appendChild(a);a.click();
+  setTimeout(function(){try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},3000);
+  toast('📊 Auxiliar descargado ✅');
+}
+
+// ── VIEW: PRECIOS ─────────────────────────────────────────────────────────────
+function vPrecios(){
+  const plan=PLANES.find(p=>p.id===st.plan);
+  if(st.pricingStep==='confirmado'){
+    if(st.metodo==='spei')return`<div class="section-title">Instrucciones de pago</div><div style="background:linear-gradient(135deg,#071A10,#0B2016);border:1px solid #166534;border-radius:14px;padding:20px;text-align:center;margin-bottom:16px"><div style="font-size:36px;margin-bottom:10px">🏦</div><div style="font-size:14px;font-weight:700;color:var(--green)">Transfiere en las próximas 48 horas</div></div>
+    ${[['Banco','Santander'],['CLABE','014180568603075589'],['Monto',fmt(plan.precio)+' MXN'],['Concepto','ContaFlow '+plan.nombre]].map(([k,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #111827"><span style="font-size:11px;color:var(--text-3)">${k}</span><span style="font-size:${k==='CLABE'?'10':'12'}px;font-weight:700;color:var(--text);font-family:${k==='CLABE'?'monospace':'inherit'}">${v}</span></div>`).join('')}
+    <div style="background:#1E293B;border-radius:8px;padding:12px;margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">⏱️ ¿Qué pasa después de tu transferencia?</div>
+      <div style="font-size:10px;color:var(--text-2);line-height:1.8">
+        1. Realiza tu transferencia a la CLABE de arriba<br>
+        2. Envíanos tu comprobante por WhatsApp o email<br>
+        3. Activamos tu cuenta en menos de 24 horas<br>
+        4. Recibes confirmación y acceso completo
+      </div>
+      <div style="background:#0F172A;border-radius:6px;padding:8px;margin-top:10px;font-size:10px;color:var(--primary-l)">
+        📧 contaflowmx@outlook.com<br>
+        💬 Escríbenos al recibir el comprobante
+      </div>
+    </div>
+    <button class="btn btn-secondary" style="margin-top:16px" onclick="st.pricingStep='planes';render()">← Volver</button>`;
+    return`<div style="text-align:center;padding:40px"><div style="font-size:60px;margin-bottom:16px">✅</div><div style="font-size:18px;font-weight:800;color:var(--green)">¡Suscripción activa!</div><div style="font-size:12px;color:var(--text-3);margin-top:6px">Plan ${plan.nombre} — ${fmt(plan.precio)}/mes</div><button class="btn btn-secondary" style="margin-top:24px" onclick="st.pricingStep='planes';render()">Volver</button></div>`;
+  }
+  if(st.pricingStep==='checkout')return`<div class="section-title">Checkout</div><div style="background:linear-gradient(135deg,#0F172A,#111827);border:1px solid ${plan.color}44;border-radius:14px;padding:16px;margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:${plan.color}">Plan ${plan.nombre}</div><div style="font-size:24px;font-weight:800;margin-top:4px">${fmt(plan.precio)} <span style="font-size:12px;font-weight:400;color:var(--text-3)">MXN / mes</span></div></div>
+  <div style="font-size:10px;color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Método de pago</div>
+  <div class="method-grid"><button class="method-btn" style="${st.metodo==='spei'?'border-color:'+plan.color+';background:'+plan.color+'22;color:'+plan.color+';font-weight:700':''}" onclick="st.metodo='spei';render()">🏦 SPEI</button><button class="method-btn" style="${st.metodo==='tarjeta'?'border-color:'+plan.color+';background:'+plan.color+'22;color:'+plan.color+';font-weight:700':''}" onclick="st.metodo='tarjeta';render()">💳 Tarjeta</button></div>
+  <div style="margin-bottom:10px"><div style="font-size:10px;color:var(--text-3);margin-bottom:5px">Nombre completo</div><input type="text" id="co-n" value="${st.coNombre}" placeholder="Ana García López"></div>
+  <div style="margin-bottom:16px"><div style="font-size:10px;color:var(--text-3);margin-bottom:5px">Correo electrónico</div><input type="email" id="co-e" value="${st.coEmail}" placeholder="ana@despacho.com"></div>
+  <button class="btn" style="background:linear-gradient(135deg,${plan.color},${plan.color}cc);color:white;margin-bottom:10px;box-shadow:0 4px 15px ${plan.color}44" onclick="confirmarPago()">${st.metodo==='spei'?'Obtener CLABE de pago':'Pagar '+fmt(plan.precio)+' MXN'}</button>
+  <button class="btn btn-secondary" onclick="st.pricingStep='planes';render()">← Volver</button>`;
+
+  return`<div style="text-align:center;margin-bottom:18px"><div class="section-title" style="margin-bottom:4px">Elige tu plan</div><div style="font-size:11px;color:var(--text-3)">Cancela cuando quieras · Sin permanencia</div></div>
+  ${PLANES.map(p=>`<div class="plan-card" style="border-color:${st.plan===p.id?p.color:'#1E293B'};${st.plan===p.id?'box-shadow:0 0 0 1px '+p.color+'44':''}" onclick="st.plan='${p.id}';render()">
+  ${p.tag?`<div style="position:absolute;top:-10px;right:14px;background:linear-gradient(135deg,${p.color},${p.color}bb);color:white;font-size:9px;padding:3px 10px;border-radius:20px;font-weight:700">${p.tag}</div>`:''}
+  <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-size:14px;font-weight:700;color:${st.plan===p.id?p.color:'#E2E8F0'}">${p.nombre}</div><div><span style="font-size:20px;font-weight:800">${fmt(p.precio)}</span><span style="font-size:9px;color:var(--text-3)"> /mes</span></div></div>
+  ${st.plan===p.id?`<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1E293B">${p.features.map(f=>`<div style="display:flex;gap:8px;padding:3px 0;font-size:11px;color:var(--text-2)"><span style="color:${p.color};font-weight:700">✓</span>${f}</div>`).join('')}</div>`:''}
+  </div>`).join('')}
+  <a href="${plan.mp}" target="_blank" style="display:block;text-align:center;background:linear-gradient(135deg,${plan.color},${plan.color}cc);color:white;margin-top:6px;box-shadow:0 4px 15px ${plan.color}44;border-radius:10px;padding:12px 16px;font-size:13px;font-weight:700;text-decoration:none">
+    💳 Pagar con Mercado Pago →
+  </a>
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px">
+    <div style="font-size:10px;color:var(--text-3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">O copia el link directo</div>
+    ${PLANES.map(p=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #1E293B">
+        <div>
+          <div style="font-size:11px;font-weight:700;color:${p.color}">Plan ${p.nombre}</div>
+          <div style="font-size:10px;color:var(--text-3);font-family:monospace">${p.mp}</div>
+        </div>
+        <button onclick="navigator.clipboard?.writeText('${p.mp}').catch(()=>{});toast('Link copiado ✅')" 
+          style="background:${p.color}22;border:1px solid ${p.color}44;border-radius:6px;padding:4px 8px;font-size:10px;color:${p.color};cursor:pointer;font-family:inherit;flex-shrink:0;margin-left:8px">
+          Copiar
+        </button>
+      </div>`).join('')}
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px">${[['🏦','SPEI'],['💳','Tarjeta'],['🏪','OXXO']].map(([i,l])=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center"><div style="font-size:18px">${i}</div><div style="font-size:9px;color:var(--text-3);margin-top:3px">${l}</div></div>`).join('')}</div>`;
+}
+
+// ── ACCIONES ──────────────────────────────────────────────────────────────────
+function goto(v){st.view=v;render();window.scrollTo(0,0)}
+
+function usarDemo(conRet){
+  try{st.cfdi=parseCFDI(conRet?XML_DEMO_RET:XML_DEMO);render();}
+  catch(e){toast('Error al procesar el XML','err');}
+}
+
+function confirmarNomina(){
+  var c=st.cfdi;
+  if(!c||!c.nomina){toast('No es un CFDI de nómina','err');return;}
+  if(nominas.some(function(n){return n.uuid===c.uuid;})){toast('Esta nómina ya está registrada','err');return;}
+  nominas.unshift({
+    id:'nom'+Date.now(),uuid:c.uuid,
+    nombre:c.nombre,rfc:c.rfc,fecha:c.fecha,
+    totalPercepciones:c.nomina.totalPercepciones,
+    totalDeducciones:c.nomina.totalDeducciones,
+    netoAPagar:c.nomina.netoAPagar,
+    isrRetenidoNomina:c.nomina.isrRetenidoNomina,
+    imssRetenido:c.nomina.imssRetenido,
+    infonavitRetenido:c.nomina.infonavitRetenido,
+    numEmpleado:c.nomina.numEmpleado,
+    puesto:c.nomina.puesto,
+    diasPagados:c.nomina.diasPagados,
+    tipoNomina:c.nomina.tipoNomina,
+    nomina:c.nomina,
+  });
+  guardarNominas();
+  st.cfdi=null;st.view='nomina';render();
+  toast('Nómina registrada y póliza generada ✅');
+}
+
+function confirmarFactura(){
+  const c=st.cfdi;
+  if(facturas.some(f=>f.uuid===c.uuid)){toast('Esta factura ya está registrada','err');return;}
+  facturas.unshift({id:'f'+Date.now(),uuid:c.uuid,nombre:c.nombre,rfc:c.rfc,fecha:c.fecha,subtotal:c.subtotal,iva:c.iva,total:c.total,concepto:c.concepto,isrRetencion:c.isrRetencion||0,ivaRetencion:c.ivaRetencion||0,regimenFiscal:c.regimenFiscal||'',regimenNombre:c.regimenNombre||'',status:'provisionada'});
+  guardar();st.cfdi=null;st.view='historial';render();
+  toast('Factura registrada — póliza generada');
+}
+
+function regPago(id){
+  const banco=document.getElementById('pb-'+id)?.value||'1020-001';
+  facturas=facturas.map(f=>f.id===id?{...f,status:'pagada'}:f);
+  guardar();st.expanded=null;render();
+  toast('Pago registrado — ciclo cerrado');
+}
+
+function confirmarPago(){
+  const n=document.getElementById('co-n')?.value||'',e=document.getElementById('co-e')?.value||'';
+  if(!n||!e){toast('Completa nombre y correo','err');return;}
+  st.coNombre=n;st.coEmail=e;st.metodo='spei';st.pricingStep='confirmado';render();
+}
+
+document.getElementById('xml-input').addEventListener('change',function(e){
+  var files=Array.from(e.target.files);
+  if(!files.length)return;
+
+  // Un solo archivo: flujo normal con preview
+  if(files.length===1){
+    var r=new FileReader();
+    r.onload=function(ev){
+      try{st.cfdi=parseCFDI(ev.target.result);st.view='nueva';render();}
+      catch(err){toast('XML inválido o no es CFDI del SAT','err');}
+    };
+    r.readAsText(files[0]);
+    this.value='';
+    return;
+  }
+
+  // Carga masiva: procesar todos sin preview
+  var total=files.length;
+  var procesados=0;
+  var errores=0;
+  var duplicados=0;
+
+  toast('Procesando '+total+' archivos...','info');
+
+  function procesarSiguiente(idx){
+    if(idx>=files.length){
+      // Terminado
+      guardar();
+      st.view='historial';
+      render();
+      var msg='✅ '+procesados+' facturas registradas';
+      if(duplicados>0) msg+=' | '+duplicados+' duplicadas';
+      if(errores>0) msg+=' | '+errores+' errores';
+      toast(msg);
+      return;
+    }
+
+    var r=new FileReader();
+    r.onload=function(ev){
+      try{
+        var cfdi=parseCFDI(ev.target.result);
+        // Verificar duplicado
+        if(facturas.some(function(f){return f.uuid===cfdi.uuid;})){
+          duplicados++;
+        } else {
+          facturas.unshift({
+            id:'f'+Date.now()+'_'+idx,
+            uuid:cfdi.uuid,
+            nombre:cfdi.nombre,
+            rfc:cfdi.rfc,
+            fecha:cfdi.fecha,
+            subtotal:cfdi.subtotal,
+            iva:cfdi.iva,
+            total:cfdi.total,
+            concepto:cfdi.concepto,
+            isrRetencion:cfdi.isrRetencion||0,
+            ivaRetencion:cfdi.ivaRetencion||0,
+            regimenFiscal:cfdi.regimenFiscal||'',
+            regimenNombre:cfdi.regimenNombre||'',
+            status:'provisionada'
+          });
+          procesados++;
+        }
+      }catch(err){
+        errores++;
+        console.error('Error en archivo '+idx+':',err);
+      }
+      // Actualizar toast de progreso
+      toast('Procesando '+(idx+1)+'/'+total+'...','info');
+      setTimeout(function(){procesarSiguiente(idx+1);},50);
+    };
+    r.readAsText(files[idx]);
+  }
+
+  procesarSiguiente(0);
+  this.value='';
+});
+
+
+// ── EXPORTAR PDF ──────────────────────────────────────────────────────────────
+function exportarPDF(id) {
+  const f = facturas.find(x => x.id === id);
+  if (!f) return;
+  const prov = provPartidas({rfc:f.rfc,concepto:f.concepto,subtotal:f.subtotal,iva:f.iva,total:f.total,isrRetencion:f.isrRetencion||0,ivaRetencion:f.ivaRetencion||0});
+  const tc = prov.reduce((s,p)=>s+p.cargo,0);
+  const ta = prov.reduce((s,p)=>s+p.abono,0);
+  // Mobile-friendly: use blob URL instead of popup
+  const _pdfContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Póliza ${f.nombre}</title>
+  <style>
+    body{font-family:Arial,sans-serif;padding:40px;color:#333;font-size:13px}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1D4ED8;padding-bottom:16px;margin-bottom:24px}
+    .brand{font-size:22px;font-weight:800;color:#1D4ED8}
+    .brand-sub{font-size:10px;color:#666;letter-spacing:1px;margin-top:2px}
+    .badge{background:#1D4ED8;color:white;padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700}
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;background:#f8f9fa;padding:14px;border-radius:8px;margin-bottom:20px}
+    .info-item .label{font-size:10px;color:#666;text-transform:uppercase;letter-spacing:.5px}
+    .info-item .value{font-weight:700;margin-top:2px}
+    h3{color:#1D4ED8;font-size:13px;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px}
+    th{background:#1D4ED8;color:white;padding:9px 8px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+    td{padding:9px 8px;border-bottom:1px solid #eee;font-size:12px}
+    .cargo{color:#059669;font-weight:700}
+    .abono{color:#DC2626;font-weight:700}
+    .totals td{font-weight:800;border-top:2px solid #1D4ED8;background:#f0f4ff}
+    .footer{margin-top:40px;text-align:center;font-size:10px;color:#999;border-top:1px solid #eee;padding-top:12px}
+    @media print{body{padding:20px}}
+  <\/style><\/script><\/head><body>
+  <div class="header">
+    <div><div class="brand">🧾 ContaFlow MX</div><div class="brand-sub">DEL XML A LA PÓLIZA</div></div>
+    <div style="text-align:right"><div class="badge">PÓLIZA DE PROVISIÓN</div><div style="font-size:11px;color:#666;margin-top:6px">Generada: ${new Date().toLocaleDateString('es-MX')}</div></div>
+  </div>
+  <div class="info-grid">
+    <div class="info-item"><div class="label">Proveedor</div><div class="value">${f.nombre}</div></div>
+    <div class="info-item"><div class="label">RFC</div><div class="value">${f.rfc}</div></div>
+    <div class="info-item"><div class="label">Fecha factura</div><div class="value">${f.fecha}</div></div>
+    <div class="info-item"><div class="label">Total</div><div class="value" style="color:#1D4ED8">${fmt(f.total)}</div></div>
+    <div class="info-item" style="grid-column:1/-1"><div class="label">Concepto</div><div class="value">${f.concepto}</div></div>
+  </div>
+  <h3>📒 Partidas contables</h3>
+  <table>
+    <tr><th>Cuenta</th><th>Nombre</th><th>Concepto</th><th>Cargo</th><th>Abono</th></tr>
+    ${prov.map(p=>`<tr><td style="font-family:monospace;color:#1D4ED8">${p.cuenta}</td><td>${p.nombre}</td><td style="color:#666">${p.concepto}</td><td class="cargo">${p.cargo?fmt(p.cargo):'—'}</td><td class="abono">${p.abono?fmt(p.abono):'—'}</td></tr>`).join('')}
+    <tr class="totals"><td colspan="3">TOTALES</td><td class="cargo">${fmt(tc)}</td><td class="abono">${fmt(ta)}</td></tr>
+  </table>
+  <div class="footer">Generado por ContaFlow MX — cosmic-centaur-10f8d2.netlify.app<br>Este documento es informativo. Verifique con su sistema contable oficial.</div>
+  <span style="display:none">>setTimeout(()=>{window.print();},500);<\/script>
+  <\/body><\/html>`
+  const _blob = new Blob([_pdfContent], {type:'text/html'});
+  const _url = URL.createObjectURL(_blob);
+  const _a = document.createElement('a');
+  _a.href = _url;
+  _a.target = '_blank';
+  _a.style.display = 'none';
+  document.body.appendChild(_a);
+  _a.click();
+  document.body.removeChild(_a);
+  setTimeout(()=>URL.revokeObjectURL(_url), 5000);
+}
+
+// ── EXPORTAR XML (SAT Contabilidad Electrónica) ───────────────────────────────
+function exportarXML(id) {
+  const f = facturas.find(x => x.id === id);
+  if (!f) return;
+  const prov = provPartidas({rfc:f.rfc,concepto:f.concepto,subtotal:f.subtotal,iva:f.iva,total:f.total,isrRetencion:f.isrRetencion||0,ivaRetencion:f.ivaRetencion||0});
+  const mes = f.fecha.slice(5,7);
+  const anio = f.fecha.slice(0,4);
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const trans = prov.map(p=>`    <PLZ:Transaccion NumCta="${p.cuenta}" DesCta="${esc(p.nombre)}" Concepto="${esc(p.concepto)}" Debe="${p.cargo.toFixed(2)}" Haber="${p.abono.toFixed(2)}"/>`).join('\n');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<PLZ:Polizas xmlns:PLZ="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/PolizasPeriodo"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/PolizasPeriodo http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/PolizasPeriodo/PolizasPeriodo_1_3.xsd"
+  Version="1.3" RFC="XAXX010101000" Mes="${mes}" Anio="${anio}" TipoSolicitud="AF">
+  <PLZ:Poliza NumUnIdenPol="PROV-${id.slice(-6).toUpperCase()}" Fecha="${f.fecha}" Concepto="${esc('Provision ' + f.nombre)}">
+${trans}
+  </PLZ:Poliza>
+</PLZ:Polizas>`;
+  const blob = new Blob([xml], {type:'text/xml;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `poliza_${f.rfc}_${f.fecha}.xml`;
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},300);
+  toast('XML descargado ✅');
+}
+
+
+
+// ── REGÍMENES ─────────────────────────────────────────────────────────────────
+let regimenActivo = localStorage.getItem('cf_regimen')||'';
+let regimenSubTab = 'resumen';
+
+const REGIMENES_INFO = {
+  '601':{nombre:'General Personas Morales', emoji:'🏛️', color:'#3B82F6',
+    desc:'Empresas constituidas como SA, SAPI, SRL, AC, etc.'},
+  '606':{nombre:'Arrendamiento', emoji:'🏠', color:'#F59E0B',
+    desc:'Personas físicas con ingresos por renta de inmuebles'},
+  '612':{nombre:'Act. Empresarial y Profesional', emoji:'🏢', color:'#10B981',
+    desc:'Profesionistas independientes, comerciantes, empresarios personas físicas'},
+  '626':{nombre:'RESICO Personas Físicas', emoji:'⚡', color:'#A78BFA',
+    desc:'Régimen Simplificado de Confianza — tasas reducidas'},
+};
+
+// RESICO tabla 2024
+const TABLA_RESICO=[
+  {li:0,ls:25000,tasa:1.00},
+  {li:25000.01,ls:50000,tasa:1.10},
+  {li:50000.01,ls:83333.33,tasa:1.50},
+  {li:83333.34,ls:208333.33,tasa:2.00},
+  {li:208333.34,ls:Infinity,tasa:2.50},
+];
+function calcRESICO(ing){
+  const t=TABLA_RESICO.find(x=>ing>=x.li&&ing<=x.ls)||TABLA_RESICO[TABLA_RESICO.length-1];
+  return ing*(t.tasa/100);
+}
+
+// Arrendamiento data
+function cargarArr(){try{return JSON.parse(localStorage.getItem('cf_arr')||'{"rentas":[],"gastos":[]}')}catch(e){return{rentas:[],gastos:[]}}}
+function guardarArr(){try{localStorage.setItem('cf_arr',JSON.stringify(arrData))}catch(e){}}
+let arrData=cargarArr();
+
+// RESICO data
+function cargarResico(){try{return JSON.parse(localStorage.getItem('cf_resico')||'{"ingresos":[]}')}catch(e){return{ingresos:[]}}}
+function guardarResico(){try{localStorage.setItem('cf_resico',JSON.stringify(resicoData))}catch(e){}}
+let resicoData=cargarResico();
+
+function vRegimenes(){
+  if(regimenActivo&&REGIMENES_INFO[regimenActivo]){
+    return renderRegimenActivo();
+  }
+  return`
+  <div class="section-title">Módulos por Régimen Fiscal</div>
+  <div style="font-size:11px;color:var(--text-3);margin-bottom:14px;line-height:1.5">Selecciona tu régimen fiscal para acceder al módulo correspondiente. Todos son gratuitos y libres.</div>
+  ${Object.entries(REGIMENES_INFO).map(([codigo,r])=>`
+    <div onclick="regimenActivo='${codigo}';localStorage.setItem('cf_regimen','${codigo}');regimenSubTab='resumen';render()"
+      style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .2s">
+      <div style="width:44px;height:44px;border-radius:12px;background:${r.color}22;border:1px solid ${r.color}44;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${r.emoji}</div>
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700;color:var(--text)">${r.nombre}</div>
+        <div style="font-size:9px;color:var(--text-3);margin-top:2px">${codigo} · ${r.desc}</div>
+      </div>
+      <div style="color:var(--text-3);font-size:16px">›</div>
+    </div>`).join('')}
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:4px">
+    <div style="font-size:10px;font-weight:700;color:var(--amber);margin-bottom:4px">💡 Detección automática</div>
+    <div style="font-size:10px;color:var(--text-3);line-height:1.6">Al subir un XML del SAT, ContaFlow detecta automáticamente tu régimen fiscal y te sugiere el módulo correcto.</div>
+  </div>`;
+}
+
+function renderRegimenActivo(){
+  const r=REGIMENES_INFO[regimenActivo];
+  const tabs={
+    '612':['resumen','ingresos','gastos','isr','iva'],
+    '626':['resumen','ingresos','isr'],
+    '606':['resumen','rentas','gastos','isr','iva'],
+    '601':['resumen','polizas'],
+  };
+  const tabLabels={resumen:'📊 Resumen',ingresos:'💰 Ingresos',gastos:'📤 Gastos',isr:'🧮 ISR',iva:'💳 IVA',rentas:'🏠 Rentas',polizas:'📒 Pólizas'};
+  const myTabs=tabs[regimenActivo]||['resumen'];
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="limpiarRegimen()" style="background:transparent;border:none;color:var(--text-3);font-size:16px;cursor:pointer">←</button>
+      <div>
+        <div style="font-size:14px;font-weight:800">${r.emoji} ${r.nombre}</div>
+        <div style="font-size:9px;color:var(--text-3)">Código ${regimenActivo}</div>
+      </div>
+    </div>
+    <span style="background:#10B98122;color:#10B981;font-size:9px;padding:3px 8px;border-radius:10px;font-weight:700">GRATUITO</span>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px">
+    ${myTabs.map(t=>`<button onclick="regimenSubTab='${t}';render()" style="border:1px solid ${regimenSubTab===t?r.color:'#1E293B'};background:${regimenSubTab===t?r.color+'22':'#111827'};color:${regimenSubTab===t?r.color:'#64748B'};border-radius:20px;padding:5px 12px;font-size:10px;cursor:pointer;white-space:nowrap;font-weight:${regimenSubTab===t?700:400};font-family:inherit">${tabLabels[t]}</button>`).join('')}
+  </div>
+  ${regimenActivo==='612'?renderAEP612():''}
+  ${regimenActivo==='626'?renderRESICO626():''}
+  ${regimenActivo==='606'?renderArrendamiento606():''}
+  ${regimenActivo==='601'?renderGeneral601():''}
+  `;
+}
+
+function renderAEP612(){
+  const hoy=new Date();
+  const mes=hoy.getMonth(),anio=hoy.getFullYear();
+  const ingMes=aepData.ingresos.filter(i=>{const d=new Date(i.fecha);return d.getMonth()===mes&&d.getFullYear()===anio});
+  const gasMes=aepData.gastos.filter(g=>{const d=new Date(g.fecha);return d.getMonth()===mes&&d.getFullYear()===anio});
+  const totalIng=ingMes.reduce((s,i)=>s+i.monto,0);
+  const totalGas=gasMes.reduce((s,g)=>s+g.monto,0);
+  const retenISR=ingMes.reduce((s,i)=>s+(i.retencionISR?i.monto*0.10:0),0);
+  const ivaT=ingMes.filter(i=>i.iva).reduce((s,i)=>s+i.monto*0.16,0);
+  const ivaA=gasMes.filter(g=>g.iva).reduce((s,g)=>s+g.monto*0.16,0);
+  const base=Math.max(0,totalIng-totalGas);
+  const isrCalc=calcISR(base);
+  const isrPagar=Math.max(0,isrCalc-retenISR-(aepData.pagosISR||0));
+  const ivaPagar=ivaT-ivaA;
+
+  if(regimenSubTab==='resumen') return`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${[['💰 Ingresos',fmt(totalIng),'#10B981'],['📤 Gastos',fmt(totalGas),'#F87171'],['🧮 ISR a pagar',fmt(isrPagar),'#F59E0B'],['💳 IVA '+(ivaPagar>=0?'a pagar':'a favor'),fmt(Math.abs(ivaPagar)),ivaPagar>=0?'#A78BFA':'#10B981']].map(([k,v,c])=>`
+        <div style="background:var(--surface2);border-radius:10px;padding:12px;border-bottom:2px solid ${c}">
+          <div style="font-size:9px;color:var(--text-3)">${k}</div>
+          <div style="font-size:15px;font-weight:800;color:${c};margin-top:3px">${v}</div>
+        </div>`).join('')}
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-top:10px">
+      <div style="font-size:10px;color:var(--text-3)">${mesNombre(mes)} ${anio} · ${ingMes.length} ingresos · ${gasMes.length} gastos</div>
+    </div>`;
+  if(regimenSubTab==='ingresos') return renderIngresosAEP(ingMes);
+  if(regimenSubTab==='gastos') return renderGastosAEP(gasMes);
+  if(regimenSubTab==='isr') return renderISR(totalIng,totalGas,base,isrCalc,retenISR,isrPagar);
+  if(regimenSubTab==='iva') return renderIVA(ivaT,ivaA,ivaPagar);
+  return '';
+}
+
+function renderRESICO626(){
+  const hoy=new Date();
+  const mes=hoy.getMonth(),anio=hoy.getFullYear();
+  const ingMes=resicoData.ingresos.filter(i=>{const d=new Date(i.fecha);return d.getMonth()===mes&&d.getFullYear()===anio});
+  const totalIng=ingMes.reduce((s,i)=>s+i.monto,0);
+  const isrResico=calcRESICO(totalIng);
+  const t=TABLA_RESICO.find(x=>totalIng>=x.li&&totalIng<=x.ls)||TABLA_RESICO[TABLA_RESICO.length-1];
+
+  if(regimenSubTab==='resumen') return`
+    <div style="background:#7C3AED22;border:1px solid #7C3AED44;border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:#A78BFA;margin-bottom:8px">⚡ RESICO — Régimen Simplificado</div>
+      <div style="font-size:10px;color:#7D8590;line-height:1.6">En RESICO el ISR se calcula sobre tus ingresos totales sin descontar gastos. La tasa va del 1% al 2.5%.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;border-bottom:2px solid #10B981">
+        <div style="font-size:9px;color:var(--text-3)">Ingresos del mes</div>
+        <div style="font-size:15px;font-weight:800;color:#10B981;margin-top:3px">${fmt(totalIng)}</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:10px;padding:12px;border-bottom:2px solid #A78BFA">
+        <div style="font-size:9px;color:var(--text-3)">ISR a pagar (${t.tasa}%)</div>
+        <div style="font-size:15px;font-weight:800;color:#A78BFA;margin-top:3px">${fmt(isrResico)}</div>
+      </div>
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:12px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:6px">Tabla RESICO aplicable</div>
+      ${TABLA_RESICO.map(r=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1E293B;font-size:10px;background:${totalIng>=r.li&&totalIng<=r.ls?'#7C3AED11':'transparent'};padding:5px 6px;border-radius:4px">
+        <span style="color:var(--text-3)">Hasta ${r.ls===Infinity?'∞':fmt(r.ls)}</span>
+        <span style="color:${totalIng>=r.li&&totalIng<=r.ls?'#A78BFA':'#475569'};font-weight:${totalIng>=r.li&&totalIng<=r.ls?700:400}">${r.tasa}%</span>
+      </div>`).join('')}
+    </div>`;
+
+  if(regimenSubTab==='ingresos') return`
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:10px">➕ Agregar ingreso RESICO</div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Concepto</div><input type="text" id="res-concepto" placeholder="Descripción del ingreso"></div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Monto total (con IVA si aplica)</div><input type="text" id="res-monto" placeholder="0.00"></div>
+      <div style="margin-bottom:10px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Fecha</div><input type="date" id="res-fecha" value="${hoy.toISOString().slice(0,10)}"></div>
+      <button class="btn btn-success" onclick="agregarIngresoResico()">Agregar ingreso +</button>
+    </div>
+    ${ingMes.length===0?'<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px">Sin ingresos este mes</div>':''}
+    ${ingMes.map(i=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between">
+      <div><div style="font-size:11px;font-weight:600">${i.concepto}</div><div style="font-size:9px;color:var(--text-3)">${i.fecha}</div></div>
+      <div style="font-size:12px;font-weight:700;color:#A78BFA">${fmt(i.monto)}</div>
+    </div>`).join('')}`;
+
+  if(regimenSubTab==='isr') return`
+    <div class="card">
+      <div style="font-size:12px;font-weight:700;color:#A78BFA;margin-bottom:12px">🧮 ISR RESICO del mes</div>
+      ${[['Ingresos totales del mes',fmt(totalIng),'#10B981'],['Tasa aplicable',t.tasa+'%','#A78BFA'],['ISR a pagar',fmt(isrResico),'#F59E0B']].map(([k,v,c])=>`
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1E293B;font-size:11px">
+          <span style="color:var(--text-3)">${k}</span><span style="color:${c};font-weight:700">${v}</span>
+        </div>`).join('')}
+      <div style="background:#7C3AED11;border-radius:8px;padding:10px;margin-top:10px;font-size:10px;color:#A78BFA;line-height:1.6">
+        💡 En RESICO no deduces gastos. El ISR se calcula directo sobre tus ingresos. Esto simplifica mucho la contabilidad.
+      </div>
+    </div>`;
+  return '';
+}
+
+function renderArrendamiento606(){
+  const hoy=new Date();
+  const mes=hoy.getMonth(),anio=hoy.getFullYear();
+  const rentasMes=arrData.rentas.filter(r=>{const d=new Date(r.fecha);return d.getMonth()===mes&&d.getFullYear()===anio});
+  const gasMes=arrData.gastos.filter(g=>{const d=new Date(g.fecha);return d.getMonth()===mes&&d.getFullYear()===anio});
+  const totalRentas=rentasMes.reduce((s,r)=>s+r.monto,0);
+  const totalGas=gasMes.reduce((s,g)=>s+g.monto,0);
+  const deduccionCiega=totalRentas*0.35;
+  const baseISR=Math.max(0,totalRentas-Math.max(deduccionCiega,totalGas));
+  const isrArr=calcISR(baseISR);
+  const ivaArr=rentasMes.filter(r=>r.iva).reduce((s,r)=>s+r.monto*0.16,0);
+
+  if(regimenSubTab==='resumen') return`
+    <div style="background:#F59E0B22;border:1px solid #F59E0B44;border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:6px">🏠 Arrendamiento de Inmuebles</div>
+      <div style="font-size:10px;color:#7D8590;line-height:1.6">Puedes deducir el 35% de tus ingresos como deducción ciega, o tus gastos reales si son mayores.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${[['🏠 Rentas del mes',fmt(totalRentas),'#F59E0B'],['📤 Gastos reales',fmt(totalGas),'#F87171'],['📉 Deducción ciega 35%',fmt(deduccionCiega),'#60A5FA'],['🧮 ISR estimado',fmt(isrArr),'#F59E0B']].map(([k,v,c])=>`
+        <div style="background:var(--surface2);border-radius:10px;padding:12px;border-bottom:2px solid ${c}">
+          <div style="font-size:9px;color:var(--text-3)">${k}</div>
+          <div style="font-size:13px;font-weight:800;color:${c};margin-top:3px">${v}</div>
+        </div>`).join('')}
+    </div>`;
+
+  if(regimenSubTab==='rentas') return`
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:10px">➕ Agregar renta cobrada</div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Inmueble / Inquilino</div><input type="text" id="arr-concepto" placeholder="Casa en Col. Roma / Juan Pérez"></div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Monto renta (sin IVA)</div><input type="text" id="arr-monto" placeholder="0.00"></div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Fecha de cobro</div><input type="date" id="arr-fecha" value="${hoy.toISOString().slice(0,10)}"></div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2);cursor:pointer;margin-bottom:10px">
+        <input type="checkbox" id="arr-iva" style="width:16px;height:16px"> Cobra IVA al inquilino
+      </label>
+      <button class="btn" style="background:linear-gradient(135deg,#F59E0B,#D97706);color:white" onclick="agregarRenta()">Agregar renta +</button>
+    </div>
+    ${rentasMes.length===0?'<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px">Sin rentas este mes</div>':''}
+    ${rentasMes.map(r=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between">
+      <div><div style="font-size:11px;font-weight:600">${r.concepto}</div><div style="font-size:9px;color:var(--text-3)">${r.fecha}${r.iva?' · Con IVA':''}</div></div>
+      <div style="font-size:12px;font-weight:700;color:var(--amber)">${fmt(r.monto)}</div>
+    </div>`).join('')}`;
+
+  if(regimenSubTab==='gastos') return`
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:8px">➕ Gasto del inmueble</div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Concepto</div><input type="text" id="arrg-concepto" placeholder="Mantenimiento, predial, etc."></div>
+      <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Monto</div><input type="text" id="arrg-monto" placeholder="0.00"></div>
+      <div style="margin-bottom:10px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Fecha</div><input type="date" id="arrg-fecha" value="${hoy.toISOString().slice(0,10)}"></div>
+      <button class="btn btn-secondary" onclick="agregarGastoArr()">Agregar gasto</button>
+    </div>
+    <div style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:12px;font-size:10px;color:var(--text-3);line-height:1.6">
+      💡 Si tus gastos reales (${fmt(totalGas)}) superan la deducción ciega del 35% (${fmt(deduccionCiega)}), se usa el mayor.
+    </div>
+    ${gasMes.map(g=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between">
+      <div><div style="font-size:11px;font-weight:600">${g.concepto}</div><div style="font-size:9px;color:var(--text-3)">${g.fecha}</div></div>
+      <div style="font-size:12px;font-weight:700;color:var(--red)">-${fmt(g.monto)}</div>
+    </div>`).join('')}`;
+
+  if(regimenSubTab==='isr') return`
+    <div class="card">
+      <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:12px">🧮 ISR Arrendamiento</div>
+      ${[['Ingresos por renta',fmt(totalRentas),'#F59E0B'],['Deducción ciega 35%',fmt(deduccionCiega),'#60A5FA'],['Gastos reales',fmt(totalGas),'#F87171'],['Deducción aplicada (mayor)',fmt(Math.max(deduccionCiega,totalGas)),'#60A5FA'],['Base gravable',fmt(baseISR),'#E2E8F0'],['ISR estimado',fmt(isrArr),'#F59E0B']].map(([k,v,c])=>`
+        <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #1E293B;font-size:11px">
+          <span style="color:var(--text-3)">${k}</span><span style="color:${c};font-weight:600">${v}</span>
+        </div>`).join('')}
+    </div>`;
+
+  if(regimenSubTab==='iva') return renderIVA(ivaArr,0,ivaArr);
+  return '';
+}
+
+function renderGeneral601(){
+  return`
+  <div style="background:#3B82F622;border:1px solid #3B82F644;border-radius:12px;padding:14px;margin-bottom:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--primary-l);margin-bottom:6px">🏛️ General Personas Morales</div>
+    <div style="font-size:10px;color:#7D8590;line-height:1.6">Las personas morales (SA, SAPI, SRL, AC) usan el módulo principal de pólizas contables de ContaFlow.</div>
+  </div>
+  <button class="btn btn-primary" style="margin-bottom:8px" onclick="goto('nueva')">📎 Registrar facturas de proveedores</button>
+  <button class="btn btn-secondary" onclick="goto('historial')">📋 Ver historial y pólizas</button>
+  <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-top:12px">
+    <div style="font-size:10px;font-weight:700;color:var(--text);margin-bottom:8px">Próximamente para Personas Morales:</div>
+    ${['Cálculo de ISR mensual','PTU anual','DIOT mensual','Declaración anual'].map(i=>`
+      <div style="display:flex;gap:8px;padding:4px 0;font-size:10px;color:var(--text-3)">
+        <span style="color:#334155">○</span>${i}
+      </div>`).join('')}
+  </div>`;
+}
+
+// Regime actions
+function agregarIngresoResico(){
+  const concepto=document.getElementById('res-concepto')?.value||'';
+  const monto=parseFloat(document.getElementById('res-monto')?.value||0);
+  const fecha=document.getElementById('res-fecha')?.value||new Date().toISOString().slice(0,10);
+  if(!concepto||!monto){toast('Completa concepto y monto','err');return;}
+  resicoData.ingresos.push({id:'r'+Date.now(),fecha,concepto,monto});
+  guardarResico();render();toast('Ingreso RESICO registrado ✅');
+}
+
+function agregarRenta(){
+  const concepto=document.getElementById('arr-concepto')?.value||'';
+  const monto=parseFloat(document.getElementById('arr-monto')?.value||0);
+  const fecha=document.getElementById('arr-fecha')?.value||new Date().toISOString().slice(0,10);
+  const iva=document.getElementById('arr-iva')?.checked||false;
+  if(!concepto||!monto){toast('Completa concepto y monto','err');return;}
+  arrData.rentas.push({id:'a'+Date.now(),fecha,concepto,monto,iva});
+  guardarArr();render();toast('Renta registrada ✅');
+}
+
+function agregarGastoArr(){
+  const concepto=document.getElementById('arrg-concepto')?.value||'';
+  const monto=parseFloat(document.getElementById('arrg-monto')?.value||0);
+  const fecha=document.getElementById('arrg-fecha')?.value||new Date().toISOString().slice(0,10);
+  if(!concepto||!monto){toast('Completa concepto y monto','err');return;}
+  arrData.gastos.push({id:'ag'+Date.now(),fecha,concepto,monto});
+  guardarArr();render();toast('Gasto registrado ✅');
+}
+
+// ── AEP DATA ──────────────────────────────────────────────────────────────────
+function cargarAEP(){try{return JSON.parse(localStorage.getItem('cf_aep')||'{"ingresos":[],"gastos":[],"pagosISR":0}')}catch(e){return{ingresos:[],gastos:[],pagosISR:0}}}
+function guardarAEP(){try{localStorage.setItem('cf_aep',JSON.stringify(aepData))}catch(e){}}
+let aepData=cargarAEP();
+let aepTab='ingresos';
+let aepForm={tipo:'honorario',concepto:'',monto:'',iva:true,retencionISR:true,fecha:new Date().toISOString().slice(0,10)};
+let aepGastoForm={concepto:'',monto:'',iva:true,fecha:new Date().toISOString().slice(0,10)};
+
+// ISR tabla mensual 2024
+const TABLA_ISR=[
+  {li:0,cuota:0,pct:1.92},{li:746.05,cuota:14.32,pct:6.40},
+  {li:6332.06,cuota:371.83,pct:10.88},{li:11128.02,cuota:893.63,pct:16.00},
+  {li:12935.83,cuota:1182.88,pct:17.92},{li:15487.72,cuota:1640.18,pct:21.36},
+  {li:31236.50,cuota:5004.12,pct:23.52},{li:49233.01,cuota:9236.89,pct:30.00},
+  {li:93993.91,cuota:22665.17,pct:32.00},{li:125325.21,cuota:32691.18,pct:34.00},
+  {li:375975.62,cuota:117912.32,pct:35.00},
+];
+function calcISR(base){
+  if(base<=0)return 0;
+  const t=[...TABLA_ISR].reverse().find(x=>base>=x.li);
+  if(!t)return 0;
+  return t.cuota+(base-t.li)*(t.pct/100);
+}
+
+function mesNombre(m){return['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][m]}
+
+// ── VIEW: AEP ─────────────────────────────────────────────────────────────────
+function vAEP(){
+  const hoy=new Date();
+  const mes=hoy.getMonth(), anio=hoy.getFullYear();
+  const ingMes=aepData.ingresos.filter(i=>{const d=new Date(i.fecha);return d.getMonth()===mes&&d.getFullYear()===anio});
+  const gasMes=aepData.gastos.filter(g=>{const d=new Date(g.fecha);return d.getMonth()===mes&&d.getFullYear()===anio});
+  const totalIng=ingMes.reduce((s,i)=>s+i.monto,0);
+  const totalGas=gasMes.reduce((s,g)=>s+g.monto,0);
+  const retenISR=ingMes.reduce((s,i)=>s+(i.retencionISR?i.monto*0.10:0),0);
+  const ivaTraslado=ingMes.filter(i=>i.iva).reduce((s,i)=>s+i.monto*0.16,0);
+  const ivaAcreditable=gasMes.filter(g=>g.iva).reduce((s,g)=>s+g.monto*0.16,0);
+  const baseISR=Math.max(0,totalIng-totalGas);
+  const isrCalculado=calcISR(baseISR);
+  const isrAPagar=Math.max(0,isrCalculado-retenISR-(aepData.pagosISR||0));
+  const ivaAPagar=ivaTraslado-ivaAcreditable;
+
+  const tabs=[['ingresos','💰 Ingresos'],['gastos','📤 Gastos'],['isr','🧮 ISR'],['iva','💳 IVA']];
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="section-title" style="margin-bottom:0">Actividad Empresarial</div>
+    <span style="background:#10B98122;color:#10B981;font-size:9px;padding:3px 8px;border-radius:10px;font-weight:700">GRATUITO</span>
+  </div>
+  <div style="font-size:10px;color:var(--text-3);margin-bottom:12px">${mesNombre(mes)} ${anio}</div>
+
+  <!-- Resumen rápido -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+    <div style="background:var(--surface2);border-radius:10px;padding:10px;border-bottom:2px solid #10B981">
+      <div style="font-size:9px;color:var(--text-3)">Ingresos del mes</div>
+      <div style="font-size:14px;font-weight:800;color:#10B981;margin-top:2px">${fmt(totalIng)}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:10px;border-bottom:2px solid #F87171">
+      <div style="font-size:9px;color:var(--text-3)">Gastos del mes</div>
+      <div style="font-size:14px;font-weight:800;color:var(--red);margin-top:2px">${fmt(totalGas)}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:10px;border-bottom:2px solid #F59E0B">
+      <div style="font-size:9px;color:var(--text-3)">ISR a pagar</div>
+      <div style="font-size:14px;font-weight:800;color:var(--amber);margin-top:2px">${fmt(isrAPagar)}</div>
+    </div>
+    <div style="background:var(--surface2);border-radius:10px;padding:10px;border-bottom:2px solid #A78BFA">
+      <div style="font-size:9px;color:var(--text-3)">IVA a pagar</div>
+      <div style="font-size:14px;font-weight:800;color:${ivaAPagar>=0?'#A78BFA':'#10B981'};margin-top:2px">${fmt(Math.abs(ivaAPagar))}${ivaAPagar<0?' (a favor)':''}</div>
+    </div>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto">
+    ${tabs.map(([id,label])=>`<button style="border:1px solid ${aepTab===id?'#3B82F6':'#1E293B'};background:${aepTab===id?'#1D4ED822':'#111827'};color:${aepTab===id?'#60A5FA':'#64748B'};border-radius:20px;padding:5px 12px;font-size:10px;cursor:pointer;white-space:nowrap;font-weight:${aepTab===id?700:400};font-family:inherit" onclick="aepTab='${id}';render()">${label}</button>`).join('')}
+  </div>
+
+  ${aepTab==='ingresos'?renderIngresosAEP(ingMes):''}
+  ${aepTab==='gastos'?renderGastosAEP(gasMes):''}
+  ${aepTab==='isr'?renderISR(totalIng,totalGas,baseISR,isrCalculado,retenISR,isrAPagar):''}
+  ${aepTab==='iva'?renderIVA(ivaTraslado,ivaAcreditable,ivaAPagar):''}
+  `;
+}
+
+function renderIngresosAEP(ingMes){
+  return`
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:11px;font-weight:700;margin-bottom:10px">➕ Agregar ingreso</div>
+    <div style="margin-bottom:8px">
+      <div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Tipo</div>
+      <select id="aep-tipo" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px;font-size:12px;color:var(--text);font-family:inherit">
+        <option value="honorario">Honorario profesional</option>
+        <option value="venta">Venta de bienes</option>
+        <option value="servicio">Prestación de servicios</option>
+        <option value="otro">Otro ingreso</option>
+      </select>
+    </div>
+    <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Concepto</div><input type="text" id="aep-concepto" placeholder="Descripción del ingreso"></div>
+    <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Monto (sin IVA)</div><input type="text" id="aep-monto" placeholder="0.00"></div>
+    <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Fecha</div><input type="date" id="aep-fecha" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2);cursor:pointer">
+        <input type="checkbox" id="aep-iva" checked style="width:16px;height:16px"> IVA 16%
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2);cursor:pointer">
+        <input type="checkbox" id="aep-ret" checked style="width:16px;height:16px"> Retención ISR 10%
+      </label>
+    </div>
+    <button class="btn btn-success" onclick="agregarIngreso()">Agregar ingreso +</button>
+  </div>
+  ${ingMes.length===0?'<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px">Sin ingresos este mes</div>':''}
+  ${ingMes.map(i=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--text)">${i.concepto}</div>
+        <div style="font-size:9px;color:var(--text-3);margin-top:2px">${i.fecha} · ${i.tipo}${i.iva?' · IVA':''}${i.retencionISR?' · Ret.ISR':''}</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:10px">
+        <div style="font-size:12px;font-weight:700;color:#10B981">${fmt(i.monto)}</div>
+        ${i.retencionISR?`<div style="font-size:9px;color:var(--red)">-${fmt(i.monto*0.10)} ISR</div>`:''}
+      </div>
+    </div>`).join('')}`;
+}
+
+function renderGastosAEP(gasMes){
+  return`
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:11px;font-weight:700;margin-bottom:10px">➕ Agregar gasto</div>
+    <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Concepto</div><input type="text" id="gas-concepto" placeholder="Descripción del gasto"></div>
+    <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Monto (sin IVA)</div><input type="text" id="gas-monto" placeholder="0.00"></div>
+    <div style="margin-bottom:8px"><div style="font-size:9px;color:var(--text-3);margin-bottom:3px">Fecha</div><input type="date" id="gas-fecha" value="${new Date().toISOString().slice(0,10)}"></div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2);cursor:pointer;margin-bottom:10px">
+      <input type="checkbox" id="gas-iva" checked style="width:16px;height:16px"> Gasto con IVA acreditable
+    </label>
+    <button class="btn" style="background:linear-gradient(135deg,#DC2626,#B91C1C);color:white" onclick="agregarGasto()">Agregar gasto +</button>
+  </div>
+  ${gasMes.length===0?'<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px">Sin gastos este mes</div>':''}
+  ${gasMes.map(g=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--text)">${g.concepto}</div>
+        <div style="font-size:9px;color:var(--text-3);margin-top:2px">${g.fecha}${g.iva?' · IVA acreditable':''}</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--red);flex-shrink:0;margin-left:10px">-${fmt(g.monto)}</div>
+    </div>`).join('')}`;
+}
+
+function renderISR(totalIng,totalGas,base,isrCalc,retenciones,isrAPagar){
+  const t=[...TABLA_ISR].reverse().find(x=>base>=x.li)||TABLA_ISR[0];
+  return`
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:12px;font-weight:700;color:var(--amber);margin-bottom:12px">🧮 ISR Provisional del mes</div>
+    ${[
+      ['Ingresos del mes',fmt(totalIng),'#10B981'],
+      ['(-) Gastos deducibles',fmt(totalGas),'#F87171'],
+      ['(=) Base gravable',fmt(base),'#E2E8F0'],
+      ['Tasa aplicada',t.pct+'%','#60A5FA'],
+      ['ISR calculado',fmt(isrCalc),'#F59E0B'],
+      ['(-) Retenciones ISR recibidas',fmt(retenciones),'#A78BFA'],
+      ['(-) Pagos provisionales previos',fmt(aepData.pagosISR||0),'#64748B'],
+    ].map(([k,v,c])=>`
+      <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #1E293B;font-size:11px">
+        <span style="color:var(--text-3)">${k}</span>
+        <span style="color:${c};font-weight:600">${v}</span>
+      </div>`).join('')}
+    <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;font-weight:800;border-top:2px solid #F59E0B;margin-top:4px">
+      <span style="color:var(--text)">ISR A PAGAR</span>
+      <span style="color:var(--amber)">${fmt(isrAPagar)}</span>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;font-weight:700;margin-bottom:8px">Pagos provisionales previos del año</div>
+    <div style="font-size:9px;color:var(--text-3);margin-bottom:4px">Total pagado en meses anteriores</div>
+    <input type="text" id="isr-previos" value="${aepData.pagosISR||0}" placeholder="0.00">
+    <button class="btn btn-primary" style="margin-top:8px" onclick="actualizarPagosISR()">Actualizar</button>
+  </div>`;
+}
+
+function renderIVA(ivaT,ivaA,ivaPagar){
+  return`
+  <div class="card">
+    <div style="font-size:12px;font-weight:700;color:#A78BFA;margin-bottom:12px">💳 Control de IVA del mes</div>
+    ${[
+      ['IVA trasladado (cobrado a clientes)',fmt(ivaT),'#10B981'],
+      ['(-) IVA acreditable (pagado en gastos)',fmt(ivaA),'#F87171'],
+    ].map(([k,v,c])=>`
+      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1E293B;font-size:11px">
+        <span style="color:var(--text-3);flex:1;padding-right:8px">${k}</span>
+        <span style="color:${c};font-weight:700;flex-shrink:0">${v}</span>
+      </div>`).join('')}
+    <div style="display:flex;justify-content:space-between;padding:10px 0;font-size:13px;font-weight:800;border-top:2px solid #A78BFA;margin-top:4px">
+      <span style="color:var(--text)">${ivaPagar>=0?'IVA A PAGAR':'IVA A FAVOR'}</span>
+      <span style="color:${ivaPagar>=0?'#A78BFA':'#10B981'}">${fmt(Math.abs(ivaPagar))}</span>
+    </div>
+    ${ivaPagar<0?`<div style="background:#071A10;border:1px solid #166534;border-radius:8px;padding:8px;margin-top:8px;font-size:10px;color:var(--green)">✅ Tienes IVA a favor — puedes acreditarlo en el siguiente mes</div>`:''}
+  </div>`;
+}
+
+// AEP Actions
+function agregarIngreso(){
+  const concepto=document.getElementById('aep-concepto')?.value||'';
+  const monto=parseFloat(document.getElementById('aep-monto')?.value||0);
+  const fecha=document.getElementById('aep-fecha')?.value||new Date().toISOString().slice(0,10);
+  const tipo=document.getElementById('aep-tipo')?.value||'honorario';
+  const iva=document.getElementById('aep-iva')?.checked||false;
+  const ret=document.getElementById('aep-ret')?.checked||false;
+  if(!concepto||!monto){toast('Completa concepto y monto','err');return;}
+  aepData.ingresos.push({id:'i'+Date.now(),fecha,concepto,tipo,monto,iva,retencionISR:ret});
+  guardarAEP();render();toast('Ingreso registrado ✅');
+}
+
+function agregarGasto(){
+  const concepto=document.getElementById('gas-concepto')?.value||'';
+  const monto=parseFloat(document.getElementById('gas-monto')?.value||0);
+  const fecha=document.getElementById('gas-fecha')?.value||new Date().toISOString().slice(0,10);
+  const iva=document.getElementById('gas-iva')?.checked||false;
+  if(!concepto||!monto){toast('Completa concepto y monto','err');return;}
+  aepData.gastos.push({id:'g'+Date.now(),fecha,concepto,monto,iva});
+  guardarAEP();render();toast('Gasto registrado ✅');
+}
+
+function actualizarPagosISR(){
+  const val=parseFloat(document.getElementById('isr-previos')?.value||0);
+  aepData.pagosISR=val;
+  guardarAEP();render();toast('Pagos previos actualizados ✅');
+}
+
+
+// ── PAPELES DE TRABAJO ────────────────────────────────────────────────────────
+let papelesTab = 'cedula-proveedores';
+
+function generarMovimientos(){
+  const movs=[];
+  facturas.forEach(f=>{
+    const prov=provPartidas({rfc:f.rfc,concepto:f.concepto,subtotal:f.subtotal,iva:f.iva,total:f.total,isrRetencion:f.isrRetencion||0,ivaRetencion:f.ivaRetencion||0});
+    prov.forEach(p=>movs.push({...p,fecha:f.fecha,proveedor:f.nombre,rfc:f.rfc,tipo:'provision',uuid:f.uuid,status:f.status}));
+    if(f.status==='pagada'){
+      [{cuenta:'2100-001',nombre:'Proveedores',cargo:f.total,abono:0},{cuenta:'1020-001',nombre:'Bancos',cargo:0,abono:f.total}]
+      .forEach(p=>movs.push({...p,fecha:f.fecha,proveedor:f.nombre,rfc:f.rfc,tipo:'pago',uuid:f.uuid,status:f.status}));
+    }
+  });
+  return movs;
+}
+
+function descargarCSV(filas,nombre){
+  const csv=filas.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=nombre+'.csv';
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(function(){try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},300);
+  toast('Descargando '+nombre+' ✅');
+}
+
+function btnDesc(fn,nombre){
+  return`<button onclick="${fn}" style="background:#059669;border:none;border-radius:8px;padding:7px 12px;font-size:10px;color:white;cursor:pointer;font-family:inherit;font-weight:700">📊 Descargar Excel</button>`;
+}
+
+function vPapeles(){
+  if(!facturas.length) return`<div style="text-align:center;padding:40px"><div style="font-size:32px;margin-bottom:12px">📄</div><div style="font-size:13px;color:var(--text-3)">Sin datos — registra facturas primero</div></div>`;
+
+  const tabs=[
+    ['cedula-proveedores','🏢 Proveedores'],
+    ['cedula-bancos','🏦 Bancos'],
+    ['cedula-iva','💳 IVA'],
+    ['cedula-isr','📋 ISR Retenido'],
+    ['balance','⚖️ Balance'],
+    ['cedula-gastos','📤 Gastos'],
+  ];
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div class="section-title" style="margin-bottom:0">Papeles de Trabajo</div>
+    <span style="background:#1D4ED822;color:var(--primary-l);font-size:9px;padding:3px 8px;border-radius:10px;font-weight:700">${facturas.length} facturas</span>
+  </div>
+  <button onclick="exportLibroCompleto()" style="width:100%;background:linear-gradient(135deg,#059669,#047857);border:none;border-radius:10px;padding:11px;font-size:12px;font-weight:700;color:white;cursor:pointer;font-family:inherit;margin-bottom:14px">
+    📊 Descargar Libro Completo (6 cédulas en 1 archivo)
+  </button>
+  <div style="overflow-x:auto;margin-bottom:14px;padding-bottom:4px">
+    <div style="display:flex;gap:6px;min-width:max-content">
+      ${tabs.map(([id,label])=>`<button onclick="papelesTab='${id}';render()" style="border:1px solid ${papelesTab===id?'#3B82F6':'#1E293B'};background:${papelesTab===id?'#1D4ED822':'#111827'};color:${papelesTab===id?'#60A5FA':'#64748B'};border-radius:20px;padding:5px 12px;font-size:10px;cursor:pointer;white-space:nowrap;font-weight:${papelesTab===id?700:400};font-family:inherit">${label}</button>`).join('')}
+    </div>
+  </div>
+  ${papelesTab==='cedula-proveedores'?cedulaProveedores():''}
+  ${papelesTab==='cedula-bancos'?cedulaBancos():''}
+  ${papelesTab==='cedula-iva'?cedulaIVA():''}
+  ${papelesTab==='cedula-isr'?cedulaISR():''}
+  ${papelesTab==='balance'?balanceComprobacion():''}
+  ${papelesTab==='cedula-gastos'?cedulaGastos():''}
+  `;
+}
+
+function cedulaProveedores(){
+  const rows=facturas.map(f=>({
+    proveedor:f.nombre,rfc:f.rfc,fecha:f.fecha,
+    subtotal:f.subtotal,iva:f.iva,isr:f.isrRetencion||0,ivaRet:f.ivaRetencion||0,
+    total:f.total,status:f.status
+  }));
+  const totProv=rows.reduce((s,r)=>s+r.total,0);
+  const totPag=rows.filter(r=>r.status==='pagada').reduce((s,r)=>s+r.total,0);
+  const saldo=totProv-totPag;
+
+  const statusColor={pendiente:'#F59E0B',provisionada:'#3B82F6',pagada:'#10B981'};
+
+  function descProveedor(){
+    const filas=[['Proveedor','RFC','Fecha','Subtotal','IVA','ISR Ret.','IVA Ret.','Total','Estatus']];
+    rows.forEach(r=>filas.push([r.proveedor,r.rfc,r.fecha,r.subtotal,r.iva,r.isr,r.ivaRet,r.total,r.status]));
+    filas.push(['','','','TOTAL','','','',totProv,'']);
+    descargarCSV(filas,'Cedula_Proveedores');
+  }
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700">🏢 Cédula de Proveedores</div>
+    <button onclick="exportProveedores()" style="background:#059669;border:none;border-radius:8px;padding:7px 12px;font-size:10px;color:white;cursor:pointer;font-family:inherit;font-weight:700">📊 Descargar Excel</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+    ${[['Total provisionado',fmt(totProv),'#3B82F6'],['Total pagado',fmt(totPag),'#10B981'],['Saldo pendiente',fmt(saldo),'#F59E0B']].map(([k,v,c])=>`
+      <div style="background:var(--surface2);border-radius:8px;padding:8px;border-bottom:2px solid ${c}">
+        <div style="font-size:8px;color:var(--text-3)">${k}</div>
+        <div style="font-size:12px;font-weight:800;color:${c};margin-top:2px">${v}</div>
+      </div>`).join('')}
+  </div>
+  <div style="overflow-x:auto">
+    <table style="min-width:500px">
+      <tr><th>Proveedor</th><th>RFC</th><th>Fecha</th><th>Subtotal</th><th>IVA</th><th>Total</th><th>Estatus</th></tr>
+      ${rows.map(r=>`<tr>
+        <td style="color:var(--text);font-size:9px">${r.proveedor.slice(0,20)}</td>
+        <td style="color:var(--primary-l);font-family:monospace;font-size:9px">${r.rfc}</td>
+        <td style="color:var(--text-3);font-size:9px">${r.fecha}</td>
+        <td style="color:var(--green);font-size:9px">${fmt(r.subtotal)}</td>
+        <td style="color:#A78BFA;font-size:9px">${fmt(r.iva)}</td>
+        <td style="color:var(--text);font-weight:700;font-size:9px">${fmt(r.total)}</td>
+        <td><span style="font-size:8px;padding:2px 6px;border-radius:8px;background:${statusColor[r.status]}22;color:${statusColor[r.status]}">${r.status}</span></td>
+      </tr>`).join('')}
+      <tr style="border-top:2px solid #334155">
+        <td colspan="5" style="font-weight:700;color:var(--text-3);font-size:10px;padding:6px 4px">TOTALES</td>
+        <td style="font-weight:800;color:var(--text);font-size:10px">${fmt(totProv)}</td>
+        <td></td>
+      </tr>
+    </table>
+  </div>`;
+}
+
+function cedulaBancos(){
+  const pagos=facturas.filter(f=>f.status==='pagada');
+  const totalSalidas=pagos.reduce((s,f)=>s+f.total,0);
+
+  function descBancos(){
+    const filas=[['Fecha','Concepto','Proveedor','RFC','Cargo','Abono']];
+    pagos.forEach(f=>filas.push([f.fecha,'Pago a proveedor',f.nombre,f.rfc,'',f.total]));
+    filas.push(['','','TOTAL SALIDAS','','',totalSalidas]);
+    descargarCSV(filas,'Cedula_Bancos');
+  }
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700">🏦 Cédula de Bancos</div>
+    <button onclick="exportBancos()" style="background:#059669;border:none;border-radius:8px;padding:7px 12px;font-size:10px;color:white;cursor:pointer;font-family:inherit;font-weight:700">📊 Descargar Excel</button>
+  </div>
+  <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-between">
+    <div><div style="font-size:9px;color:var(--text-3)">Total salidas registradas</div><div style="font-size:15px;font-weight:800;color:var(--red);margin-top:2px">${fmt(totalSalidas)}</div></div>
+    <div style="text-align:right"><div style="font-size:9px;color:var(--text-3)">Movimientos</div><div style="font-size:15px;font-weight:800;color:var(--text);margin-top:2px">${pagos.length}</div></div>
+  </div>
+  ${pagos.length===0?'<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px">Sin pagos registrados aún</div>':''}
+  <table>
+    <tr><th>Fecha</th><th>Proveedor</th><th>Cargo</th><th>Abono</th></tr>
+    ${pagos.map(f=>`<tr>
+      <td style="color:var(--text-3);font-size:9px">${f.fecha}</td>
+      <td style="color:var(--text);font-size:9px">${f.nombre.slice(0,22)}</td>
+      <td style="color:#334155;font-size:9px">—</td>
+      <td style="color:var(--red);font-weight:700;font-size:9px">${fmt(f.total)}</td>
+    </tr>`).join('')}
+    ${pagos.length?`<tr style="border-top:2px solid #334155"><td colspan="2" style="font-weight:700;color:var(--text-3);font-size:10px;padding:6px 4px">TOTAL</td><td></td><td style="font-weight:800;color:var(--red)">${fmt(totalSalidas)}</td></tr>`:''}
+  </table>`;
+}
+
+function cedulaIVA(){
+  const totalAcred=facturas.reduce((s,f)=>s+f.iva,0);
+  const totalRet=facturas.reduce((s,f)=>s+(f.ivaRetencion||0),0);
+  const ivaFavor=totalAcred-totalRet;
+
+  function descIVA(){
+    const filas=[['Proveedor','RFC','Fecha','Subtotal','IVA Acreditable','IVA Retenido','IVA Neto']];
+    facturas.forEach(f=>filas.push([f.nombre,f.rfc,f.fecha,f.subtotal,f.iva,f.ivaRetencion||0,f.iva-(f.ivaRetencion||0)]));
+    filas.push(['','','TOTALES','',totalAcred,totalRet,ivaFavor]);
+    descargarCSV(filas,'Cedula_IVA');
+  }
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700">💳 Cédula de IVA</div>
+    <button onclick="exportIVA()" style="background:#059669;border:none;border-radius:8px;padding:7px 12px;font-size:10px;color:white;cursor:pointer;font-family:inherit;font-weight:700">📊 Descargar Excel</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+    ${[['IVA Acreditable',fmt(totalAcred),'#A78BFA'],['IVA Retenido',fmt(totalRet),'#F59E0B'],['Saldo a favor',fmt(ivaFavor),'#10B981']].map(([k,v,c])=>`
+      <div style="background:var(--surface2);border-radius:8px;padding:8px;border-bottom:2px solid ${c}">
+        <div style="font-size:8px;color:var(--text-3)">${k}</div>
+        <div style="font-size:12px;font-weight:800;color:${c};margin-top:2px">${v}</div>
+      </div>`).join('')}
+  </div>
+  <table>
+    <tr><th>Proveedor</th><th>Fecha</th><th>IVA Acred.</th><th>IVA Ret.</th><th>Neto</th></tr>
+    ${facturas.map(f=>`<tr>
+      <td style="color:var(--text);font-size:9px">${f.nombre.slice(0,18)}</td>
+      <td style="color:var(--text-3);font-size:9px">${f.fecha}</td>
+      <td style="color:#A78BFA;font-size:9px">${fmt(f.iva)}</td>
+      <td style="color:var(--amber);font-size:9px">${f.ivaRetencion>0?fmt(f.ivaRetencion):'—'}</td>
+      <td style="color:#10B981;font-weight:700;font-size:9px">${fmt(f.iva-(f.ivaRetencion||0))}</td>
+    </tr>`).join('')}
+    <tr style="border-top:2px solid #334155">
+      <td colspan="2" style="font-weight:700;color:var(--text-3);font-size:10px;padding:6px 4px">TOTALES</td>
+      <td style="font-weight:800;color:#A78BFA">${fmt(totalAcred)}</td>
+      <td style="font-weight:800;color:var(--amber)">${fmt(totalRet)}</td>
+      <td style="font-weight:800;color:#10B981">${fmt(ivaFavor)}</td>
+    </tr>
+  </table>`;
+}
+
+function cedulaISR(){
+  const conRet=facturas.filter(f=>f.isrRetencion>0);
+  const totalISR=conRet.reduce((s,f)=>s+(f.isrRetencion||0),0);
+
+  function descISR(){
+    const filas=[['Proveedor','RFC','Fecha','Subtotal','Tasa','ISR Retenido']];
+    conRet.forEach(f=>filas.push([f.nombre,f.rfc,f.fecha,f.subtotal,'10%',f.isrRetencion]));
+    filas.push(['','','TOTAL','','',totalISR]);
+    descargarCSV(filas,'Cedula_ISR_Retenido');
+  }
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700">📋 Cédula de ISR Retenido</div>
+    <button onclick="exportISR()" style="background:#059669;border:none;border-radius:8px;padding:7px 12px;font-size:10px;color:white;cursor:pointer;font-family:inherit;font-weight:700">📊 Descargar Excel</button>
+  </div>
+  <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:12px;display:flex;justify-content:space-between">
+    <div><div style="font-size:9px;color:var(--text-3)">Total ISR retenido</div><div style="font-size:15px;font-weight:800;color:var(--amber);margin-top:2px">${fmt(totalISR)}</div></div>
+    <div style="text-align:right"><div style="font-size:9px;color:var(--text-3)">Facturas con retención</div><div style="font-size:15px;font-weight:800;color:var(--text);margin-top:2px">${conRet.length}</div></div>
+  </div>
+  ${conRet.length===0?'<div style="text-align:center;padding:20px;color:var(--text-3);font-size:12px">Sin facturas con retención de ISR</div>':''}
+  <table>
+    <tr><th>Proveedor</th><th>RFC</th><th>Fecha</th><th>Subtotal</th><th>ISR 10%</th></tr>
+    ${conRet.map(f=>`<tr>
+      <td style="color:var(--text);font-size:9px">${f.nombre.slice(0,18)}</td>
+      <td style="color:var(--primary-l);font-family:monospace;font-size:9px">${f.rfc}</td>
+      <td style="color:var(--text-3);font-size:9px">${f.fecha}</td>
+      <td style="color:var(--text);font-size:9px">${fmt(f.subtotal)}</td>
+      <td style="color:var(--amber);font-weight:700;font-size:9px">${fmt(f.isrRetencion)}</td>
+    </tr>`).join('')}
+    ${conRet.length?`<tr style="border-top:2px solid #334155"><td colspan="4" style="font-weight:700;color:var(--text-3);font-size:10px;padding:6px 4px">TOTAL ISR RETENIDO</td><td style="font-weight:800;color:var(--amber)">${fmt(totalISR)}</td></tr>`:''}
+  </table>`;
+}
+
+function balanceComprobacion(){
+  const movs=generarMovimientos();
+  const cuentas={};
+  movs.forEach(m=>{
+    if(!cuentas[m.cuenta])cuentas[m.cuenta]={nombre:m.nombre,debe:0,haber:0};
+    cuentas[m.cuenta].debe+=m.cargo;
+    cuentas[m.cuenta].haber+=m.abono;
+  });
+  const entries=Object.entries(cuentas).sort((a,b)=>a[0].localeCompare(b[0]));
+  const totDebe=entries.reduce((s,[,c])=>s+c.debe,0);
+  const totHaber=entries.reduce((s,[,c])=>s+c.haber,0);
+
+  function descBalance(){
+    const filas=[['Cuenta','Nombre','Sumas Debe','Sumas Haber','Saldo Deudor','Saldo Acreedor']];
+    entries.forEach(([cta,c])=>{
+      const sd=c.debe>c.haber?c.debe-c.haber:0;
+      const sa=c.haber>c.debe?c.haber-c.debe:0;
+      filas.push([cta,c.nombre,c.debe,c.haber,sd,sa]);
+    });
+    filas.push(['','TOTALES',totDebe,totHaber,'','']);
+    descargarCSV(filas,'Balance_Comprobacion');
+  }
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700">⚖️ Balance de Comprobación</div>
+    <button onclick="exportBalance()" style="background:#059669;border:none;border-radius:8px;padding:7px 12px;font-size:10px;color:white;cursor:pointer;font-family:inherit;font-weight:700">📊 Descargar Excel</button>
+  </div>
+  ${totDebe===totHaber?`<div style="background:#071A10;border:1px solid #166534;border-radius:8px;padding:8px;margin-bottom:10px;font-size:10px;color:var(--green);font-weight:700">✅ Cuadrado — Debe = Haber = ${fmt(totDebe)}</div>`:''}
+  <div style="overflow-x:auto">
+    <table style="min-width:480px">
+      <tr><th>Cuenta</th><th>Nombre</th><th>Debe</th><th>Haber</th><th>S.Deudor</th><th>S.Acreedor</th></tr>
+      ${entries.map(([cta,c])=>{
+        const sd=c.debe>c.haber?c.debe-c.haber:0;
+        const sa=c.haber>c.debe?c.haber-c.debe:0;
+        return`<tr>
+          <td style="color:var(--primary-l);font-family:monospace;font-size:9px">${cta}</td>
+          <td style="color:var(--text);font-size:9px">${c.nombre}</td>
+          <td style="color:var(--green);font-size:9px">${c.debe>0?fmt(c.debe):'—'}</td>
+          <td style="color:var(--red);font-size:9px">${c.haber>0?fmt(c.haber):'—'}</td>
+          <td style="color:var(--primary-l);font-size:9px">${sd>0?fmt(sd):'—'}</td>
+          <td style="color:#A78BFA;font-size:9px">${sa>0?fmt(sa):'—'}</td>
+        </tr>`;}).join('')}
+      <tr style="border-top:2px solid #334155">
+        <td colspan="2" style="font-weight:700;color:var(--text-3);font-size:10px;padding:6px 4px">TOTALES</td>
+        <td style="font-weight:800;color:var(--green)">${fmt(totDebe)}</td>
+        <td style="font-weight:800;color:var(--red)">${fmt(totHaber)}</td>
+        <td></td><td></td>
+      </tr>
+    </table>
+  </div>`;
+}
+
+function cedulaGastos(){
+  const gastosCtas={};
+  facturas.forEach(f=>{
+    const prov=provPartidas({rfc:f.rfc,concepto:f.concepto,subtotal:f.subtotal,iva:f.iva,total:f.total,isrRetencion:f.isrRetencion||0,ivaRetencion:f.ivaRetencion||0});
+    prov.filter(p=>p.cuenta.startsWith('6')).forEach(p=>{
+      if(!gastosCtas[p.cuenta])gastosCtas[p.cuenta]={nombre:p.nombre,movs:[],total:0};
+      gastosCtas[p.cuenta].movs.push({fecha:f.fecha,proveedor:f.nombre,monto:p.cargo});
+      gastosCtas[p.cuenta].total+=p.cargo;
+    });
+  });
+  const totalGastos=Object.values(gastosCtas).reduce((s,c)=>s+c.total,0);
+
+  function descGastos(){
+    const filas=[['Cuenta','Nombre Cuenta','Fecha','Proveedor','Monto']];
+    Object.entries(gastosCtas).forEach(([cta,c])=>{
+      c.movs.forEach(m=>filas.push([cta,c.nombre,m.fecha,m.proveedor,m.monto]));
+      filas.push([cta,'SUBTOTAL '+c.nombre,'','',c.total]);
+    });
+    filas.push(['','TOTAL GASTOS','','',totalGastos]);
+    descargarCSV(filas,'Cedula_Gastos');
+  }
+
+  return`
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:12px;font-weight:700">📤 Cédula de Gastos por Cuenta</div>
+    <button onclick="exportGastos()" style="background:#059669;border:none;border-radius:8px;padding:7px 12px;font-size:10px;color:white;cursor:pointer;font-family:inherit;font-weight:700">📊 Descargar Excel</button>
+  </div>
+  <div style="background:var(--surface2);border-radius:10px;padding:10px;margin-bottom:12px">
+    <div style="font-size:9px;color:var(--text-3)">Total gastos del período</div>
+    <div style="font-size:16px;font-weight:800;color:var(--red);margin-top:2px">${fmt(totalGastos)}</div>
+  </div>
+  ${Object.entries(gastosCtas).map(([cta,c])=>`
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden">
+      <div style="background:#1E293B;padding:8px 12px;display:flex;justify-content:space-between">
+        <div><span style="color:var(--primary-l);font-family:monospace;font-size:10px">${cta}</span> <span style="color:var(--text);font-size:10px;font-weight:700">${c.nombre}</span></div>
+        <span style="color:var(--red);font-weight:800;font-size:11px">${fmt(c.total)}</span>
+      </div>
+      ${c.movs.map(m=>`<div style="display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #0B1120;font-size:10px">
+        <span style="color:var(--text-3)">${m.fecha} · ${m.proveedor.slice(0,22)}</span>
+        <span style="color:var(--text)">${fmt(m.monto)}</span>
+      </div>`).join('')}
+    </div>`).join('')}`;
+}
+
+
+// ── EXPORTAR EXCEL SpreadsheetML (compatible con móvil) ──────────────────────
+// ── EXPORTAR CSV (compatible con WPS, Excel, Google Sheets) ─────────────────
+function csvEnc(v){
+  var s=String(v===null||v===undefined?'':v);
+  if(s.includes(',')||s.includes('"')||s.includes('\n'))
+    return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+
+function descargarCSV(filas,nombre){
+  // Genera XLS estilizado con formato ContaFlow
+  var hoy=new Date().toLocaleDateString('es-MX');
+  var titulo=filas[0]&&filas[0][0]?String(filas[0][0]):'ContaFlow MX';
+  var subtitulo=filas[1]&&filas[1][0]?String(filas[1][0]):'';
+  var startIdx=3;
+  while(startIdx<filas.length&&(!filas[startIdx]||filas[startIdx].length===0||filas[startIdx].every(function(c){return c===''||c===null||c===undefined;})))startIdx++;
+  var headerRow=filas[startIdx]||[];
+  var dataRows=filas.slice(startIdx+1);
+  var cols=Math.max(headerRow.length,1);
+  function escH(v){var s=String(v===null||v===undefined?'':v);return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function numC(v){if(typeof v==='number'||(v!==''&&v!==null&&v!==undefined&&!isNaN(parseFloat(v))&&String(v).trim()!=='')){var n=parseFloat(v);if(!isNaN(n))return n.toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});}return escH(v);}
+  var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">'
+  +'<head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
+  +'<x:Name>ContaFlow</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'
+  +'</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->'
+  +'<style>body{font-family:Calibri,Arial,sans-serif;font-size:11pt}'
+  +'.logo{background:#1D4ED8;color:#FFFFFF;font-size:15pt;font-weight:bold;padding:8px 14px}'
+  +'.brand{background:#1E3A8A;color:#93C5FD;font-size:9pt;padding:3px 14px}'
+  +'.rep{background:#1D4ED8;color:#FFFFFF;font-size:13pt;font-weight:bold;padding:6px 14px}'
+  +'.sub{background:#EFF6FF;color:#1E40AF;font-size:9pt;padding:4px 14px;border-bottom:2px solid #1D4ED8}'
+  +'.th{background:#1D4ED8;color:#FFF;font-weight:bold;font-size:10pt;padding:6px 8px;border:1px solid #1E40AF;text-align:center}'
+  +'.thn{background:#1D4ED8;color:#FFF;font-weight:bold;font-size:10pt;padding:6px 8px;border:1px solid #1E40AF;text-align:right}'
+  +'.td{padding:5px 8px;border:1px solid #E2E8F0;font-size:10pt}'
+  +'.tdn{padding:5px 8px;border:1px solid #E2E8F0;font-size:10pt;text-align:right}'
+  +'.alt{background:#F0F7FF}'
+  +'.tot{background:#FEF3C7;font-weight:bold;padding:5px 8px;border:1px solid #E2E8F0;border-top:2px solid #D97706}'
+  +'.totn{background:#FEF3C7;font-weight:bold;padding:5px 8px;border:1px solid #E2E8F0;border-top:2px solid #D97706;text-align:right}'
+  +'</style></head><body>'
+  +'<table border="0" cellspacing="0" cellpadding="0">'
+  +'<tr><td colspan="'+cols+'" class="logo">&#9702; ContaFlow MX</td></tr>'
+  +'<tr><td colspan="'+cols+'" class="brand">Del XML del SAT a la poliza contable &mdash; automatico</td></tr>'
+  +'<tr><td colspan="'+cols+'" class="rep">'+escH(titulo.replace(/^CONTAFLOW MX\s*[—-]\s*/i,''))+'</td></tr>'
+  +'<tr><td colspan="'+cols+'" class="sub">'+escH(subtitulo)+'</td></tr>'
+  +'<tr><td colspan="'+cols+'" style="padding:4px">&nbsp;</td></tr>'
+  +'<tr>'+headerRow.map(function(h){var s=String(h||'');var n=/monto|cargo|abono|total|iva|isr|subtotal|saldo|importe|neto|precio/i.test(s);return'<td class="'+(n?'thn':'th')+'">'+escH(s)+'</td>';}).join('')+'</tr>';
+  dataRows.forEach(function(row,idx){
+    if(!row||row.length===0)return;
+    if(row.every(function(c){return c===''||c===null||c===undefined;}))return;
+    var isTot=row.some(function(c){return/^TOTAL|^SUBTOTAL/i.test(String(c||''));});
+    html+='<tr>'+row.map(function(c){
+      var s=String(c===null||c===undefined?'':c);
+      var isNum=(typeof c==='number')||(s.trim()!==''&&!isNaN(parseFloat(s.replace(/[$, ]/g,''))));
+      var base=isTot?(isNum?'totn':'tot'):(isNum?'tdn':'td');
+      var alt=(!isTot&&idx%2===0)?' alt':'';
+      return'<td class="'+base+alt+'">'+numC(c)+'</td>';
+    }).join('')+'</tr>';
+  });
+  html+='</table><br><p style="font-size:8pt;color:#94A3B8">Generado por ContaFlow MX &bull; '+hoy+'</p></body></html>';
+  var blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;a.download=nombre+'_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.style.display='none';document.body.appendChild(a);a.click();
+  setTimeout(function(){try{document.body.removeChild(a);}catch(e){}URL.revokeObjectURL(url);},5000);
+  toast('\ud83d\udcca Excel descargado \u2705');
+}
+
+function cabecera(titulo){
+  var hoy=new Date().toLocaleDateString('es-MX');
+  return[['CONTAFLOW MX — '+titulo.toUpperCase()],['Generado: '+hoy+' | Facturas: '+facturas.length],[]];
+}
+
+function exportProveedores(){
+  var tot=facturas.reduce(function(s,f){return s+f.total;},0);
+  var filas=cabecera('Cedula de Proveedores');
+  filas.push(['N°','Proveedor','RFC','Fecha','Subtotal','IVA','ISR Ret.','IVA Ret.','Total','Estatus']);
+  facturas.forEach(function(f,i){filas.push([i+1,f.nombre,f.rfc,f.fecha,f.subtotal,f.iva,f.isrRetencion||0,f.ivaRetencion||0,f.total,f.status]);});
+  filas.push([]);filas.push(['','','','TOTAL','','','','',tot,'']);
+  descargarCSV(filas,'Cedula_Proveedores');
+}
+
+function exportBancos(){
+  var pagos=facturas.filter(function(f){return f.status==='pagada';});
+  var tot=pagos.reduce(function(s,f){return s+f.total;},0);
+  var filas=cabecera('Cedula de Bancos');
+  filas.push(['N°','Fecha','Proveedor','RFC','Cargo','Abono']);
+  pagos.forEach(function(f,i){filas.push([i+1,f.fecha,f.nombre,f.rfc,0,f.total]);});
+  filas.push([]);filas.push(['','TOTAL SALIDAS','','','',tot]);
+  descargarCSV(filas,'Cedula_Bancos');
+}
+
+function exportIVA(){
+  var totA=facturas.reduce(function(s,f){return s+f.iva;},0);
+  var totR=facturas.reduce(function(s,f){return s+(f.ivaRetencion||0);},0);
+  var filas=cabecera('Cedula de IVA');
+  filas.push(['N°','Proveedor','RFC','Fecha','IVA Acreditable','IVA Retenido','IVA Neto']);
+  facturas.forEach(function(f,i){filas.push([i+1,f.nombre,f.rfc,f.fecha,f.iva,f.ivaRetencion||0,f.iva-(f.ivaRetencion||0)]);});
+  filas.push([]);filas.push(['','','TOTALES','',totA,totR,totA-totR]);
+  descargarCSV(filas,'Cedula_IVA');
+}
+
+function exportISR(){
+  var conRet=facturas.filter(function(f){return f.isrRetencion>0;});
+  var tot=conRet.reduce(function(s,f){return s+(f.isrRetencion||0);},0);
+  var filas=cabecera('Cedula ISR Retenido');
+  filas.push(['N°','Proveedor','RFC','Fecha','Subtotal','Tasa','ISR Retenido']);
+  conRet.forEach(function(f,i){filas.push([i+1,f.nombre,f.rfc,f.fecha,f.subtotal,'10%',f.isrRetencion]);});
+  filas.push([]);filas.push(['','','TOTAL ISR','','','',tot]);
+  descargarCSV(filas,'Cedula_ISR_Retenido');
+}
+
+function exportBalance(){
+  var movs=generarMovimientos();var ctas={};
+  movs.forEach(function(m){
+    if(!ctas[m.cuenta])ctas[m.cuenta]={nombre:m.nombre,debe:0,haber:0};
+    ctas[m.cuenta].debe+=m.cargo;ctas[m.cuenta].haber+=m.abono;
+  });
+  var entries=Object.entries(ctas).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  var totD=entries.reduce(function(s,e){return s+e[1].debe;},0);
+  var totH=entries.reduce(function(s,e){return s+e[1].haber;},0);
+  var filas=cabecera('Balance de Comprobacion');
+  filas.push(['Cuenta','Nombre','Sumas Debe','Sumas Haber','Saldo Deudor','Saldo Acreedor']);
+  entries.forEach(function(e){
+    var sd=e[1].debe>e[1].haber?e[1].debe-e[1].haber:0;
+    var sa=e[1].haber>e[1].debe?e[1].haber-e[1].debe:0;
+    filas.push([e[0],e[1].nombre,e[1].debe,e[1].haber,sd,sa]);
+  });
+  filas.push([]);filas.push(['TOTALES','',totD,totH,'','']);
+  descargarCSV(filas,'Balance_Comprobacion');
+}
+
+function exportGastos(){
+  var gastosCtas={};
+  facturas.forEach(function(f){
+    var prov=provPartidas({rfc:f.rfc,concepto:f.concepto,subtotal:f.subtotal,iva:f.iva,total:f.total,isrRetencion:f.isrRetencion||0,ivaRetencion:f.ivaRetencion||0});
+    prov.filter(function(p){return p.cuenta.startsWith('6');}).forEach(function(p){
+      if(!gastosCtas[p.cuenta])gastosCtas[p.cuenta]={nombre:p.nombre,movs:[],total:0};
+      gastosCtas[p.cuenta].movs.push([f.fecha,f.nombre,p.cargo]);
+      gastosCtas[p.cuenta].total+=p.cargo;
+    });
+  });
+  var tot=Object.values(gastosCtas).reduce(function(s,c){return s+c.total;},0);
+  var filas=cabecera('Cedula de Gastos');
+  filas.push(['Cuenta','Nombre Cuenta','Fecha','Proveedor','Monto']);
+  Object.entries(gastosCtas).forEach(function(e){
+    e[1].movs.forEach(function(m){filas.push([e[0],e[1].nombre,m[0],m[1],m[2]]);});
+    filas.push([e[0],'SUBTOTAL','','',e[1].total]);filas.push([]);
+  });
+  filas.push(['TOTAL GASTOS','','','',tot]);
+  descargarCSV(filas,'Cedula_Gastos');
+}
+
+function exportLibroCompleto(){
+  exportProveedores();
+  setTimeout(function(){exportBancos();},500);
+  setTimeout(function(){exportIVA();},1000);
+  setTimeout(function(){exportISR();},1500);
+  setTimeout(function(){exportBalance();},2000);
+  setTimeout(function(){exportGastos();},2500);
+  setTimeout(function(){toast('✅ 6 cedulas CSV descargadas');},3000);
+}
+
+// ── VISTA: NÓMINA ─────────────────────────────────────────────────────────────
+function vNomina(){
+  var totPerc=nominas.reduce(function(s,n){return s+n.totalPercepciones;},0);
+  var totISR=nominas.reduce(function(s,n){return s+n.isrRetenidoNomina;},0);
+  var totIMSS=nominas.reduce(function(s,n){return s+n.imssRetenido;},0);
+  var totNeto=nominas.reduce(function(s,n){return s+n.netoAPagar;},0);
+
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<div class="section-title" style="margin-bottom:0">Módulo de Nómina</div>'
+    +'<span style="background:#7C3AED22;color:#A78BFA;font-size:9px;padding:3px 8px;border-radius:10px;font-weight:700">'+nominas.length+' registros</span>'
+    +'</div>';
+
+  if(nominas.length===0){
+    html+='<div style="text-align:center;padding:30px">'
+      +'<div style="font-size:36px;margin-bottom:12px">📋</div>'
+      +'<div style="font-size:13px;font-weight:700;margin-bottom:6px">Sin nóminas registradas</div>'
+      +'<div style="font-size:11px;color:var(--text-3);margin-bottom:16px">Sube un XML de nómina del SAT</div>'
+      +'<button class="btn btn-primary" onclick="gotoNueva()">📎 Subir XML de nómina</button>'
+      +'</div>';
+  } else {
+    // Resumen
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">';
+    var stats=[
+      ['Total percepciones',fmt(totPerc),'#10B981'],
+      ['Neto a pagar',fmt(totNeto),'#3B82F6'],
+      ['ISR retenido',fmt(totISR),'#F59E0B'],
+      ['IMSS retenido',fmt(totIMSS),'#A78BFA']
+    ];
+    stats.forEach(function(s){
+      html+='<div style="background:var(--surface2);border-radius:10px;padding:10px;border-bottom:2px solid '+s[2]+'">'
+        +'<div style="font-size:9px;color:var(--text-3)">'+s[0]+'</div>'
+        +'<div style="font-size:13px;font-weight:800;color:'+s[2]+';margin-top:2px">'+s[1]+'</div>'
+        +'</div>';
+    });
+    html+='</div>';
+
+    // Lista
+    nominas.forEach(function(n){
+      var isExp=st.expanded===('nom_'+n.id);
+      html+='<div class="factura-card">'
+        +'<div style="padding:12px 14px;cursor:pointer;display:flex;justify-content:space-between;align-items:center" '
+        +'onclick="st.expanded=st.expanded==='+JSON.stringify('nom_'+n.id)+'?null:'+JSON.stringify('nom_'+n.id)+';render()">'
+        +'<div>'
+        +'<div style="font-size:12px;font-weight:600">'+n.nombre+'</div>'
+        +'<div style="font-size:9px;color:var(--text-3);margin-top:2px">'+n.fecha+' · Emp: '+n.numEmpleado+' · '+n.diasPagados+' días</div>'
+        +'</div>'
+        +'<div style="text-align:right;flex-shrink:0;margin-left:10px">'
+        +'<div style="font-size:12px;font-weight:700;color:#10B981">'+fmt(n.totalPercepciones)+'</div>'
+        +'<div style="font-size:9px;color:var(--amber)">Neto: '+fmt(n.netoAPagar)+'</div>'
+        +'</div>'
+        +'</div>';
+
+      if(isExp){
+        var parts=provPartidasNomina({fecha:n.fecha,nomina:n});
+        html+='<div style="padding:10px 14px;border-top:1px solid #1E293B">'
+          +'<div style="font-size:10px;font-weight:700;color:var(--text-3);margin-bottom:8px">DETALLE</div>';
+        [['Percepciones brutas',fmt(n.totalPercepciones),'#10B981'],
+         ['(-) ISR retenido',fmt(n.isrRetenidoNomina),'#F59E0B'],
+         ['(-) IMSS trabajador',fmt(n.imssRetenido),'#A78BFA'],
+         ['(=) Neto a pagar',fmt(n.netoAPagar),'#10B981']
+        ].forEach(function(d){
+          html+='<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1E293B;font-size:11px">'
+            +'<span style="color:var(--text-3)">'+d[0]+'</span>'
+            +'<span style="color:'+d[2]+';font-weight:700">'+d[1]+'</span>'
+            +'</div>';
+        });
+        html+='<div style="font-size:10px;font-weight:700;color:var(--text-2);margin:10px 0 6px">PÓLIZA CONTABLE</div>'
+          +tablaPoliza(parts)
+          +'<button class="btn btn-danger" style="margin-top:10px;font-size:10px" '
+          +'onclick="eliminarNomina('+JSON.stringify(n.id)+')">🗑 Eliminar</button>'
+          +'</div>';
+      }
+      html+='</div>';
+    });
+    html+='<button class="btn btn-primary" style="margin-top:12px" onclick="gotoNueva()">➕ Subir otra nómina XML</button>';
+  }
+  return html;
+}
+
+function eliminarNomina(id){
+  nominas=nominas.filter(function(n){return n.id!==id;});
+  guardarNominas();
+  st.expanded=null;
+  render();
+  toast('Nómina eliminada');
+}
+
+
+// ── EXPORTAR / IMPORTAR DATOS ─────────────────────────────────────────────────
+function exportarTodosMisDatos(){
+  var datos={
+    version:3,
+    exportadoEl:new Date().toISOString(),
+    facturas:facturas,
+    nominas:nominas,
+    empresas:empresas,
+    aepData:aepData,
+    resicoData:resicoData,
+    arrData:arrData,
+    planInfo:planInfo,
+    catalogoPersonal:catalogoPersonal||{},
+  };
+  var json=JSON.stringify(datos,null,2);
+  var blob=new Blob([json],{type:'application/json;charset=utf-8'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='ContaFlow_Backup_'+new Date().toISOString().slice(0,10)+'.json';
+  a.style.display='none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},5000);
+  // Guardar fecha de último backup
+  localStorage.setItem('cf_ultimo_backup',new Date().toISOString());
+  toast('✅ Datos exportados — guarda este archivo en Drive o WhatsApp');
+}
+
+function importarDatos(input){
+  var file=input.files[0];
+  if(!file)return;
+  var r=new FileReader();
+  r.onload=function(e){
+    try{
+      var datos=JSON.parse(e.target.result);
+      if(!datos.version||!datos.facturas){
+        toast('Archivo no válido — usa un backup de ContaFlow','err');
+        return;
+      }
+      // Guardar todo
+      if(datos.facturas)  {facturas=datos.facturas;    guardar();}
+      if(datos.nominas)   {nominas=datos.nominas;       guardarNominas();}
+      if(datos.empresas)  {empresas=datos.empresas;     guardarEmpresas();}
+      if(datos.aepData)   {aepData=datos.aepData;       guardarAEP();}
+      if(datos.resicoData){resicoData=datos.resicoData; guardarResico();}
+      if(datos.arrData)   {arrData=datos.arrData;       guardarArr();}
+      if(datos.planInfo)  {guardarPlan(datos.planInfo); planInfo=cargarPlan();}
+      localStorage.setItem('cf_ultimo_backup',new Date().toISOString());
+      st.view='dashboard';
+      render();
+      toast('✅ '+datos.facturas.length+' facturas y '+datos.nominas.length+' nóminas importadas');
+    }catch(err){
+      toast('Error al importar: '+err.message,'err');
+    }
+  };
+  r.readAsText(file);
+  input.value='';
+}
+
+function vSatSection(){
+  var p=satState.paso;
+  var isLocal=!SAT_FN;
+
+  // Header común
+  var html='<div class="card" style="margin-bottom:14px;border-color:rgba(59,130,246,.35);background:linear-gradient(135deg,#0B1528,#0B1221)">'
+    +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+    +'<div style="background:linear-gradient(135deg,#1D4ED8,#0891B2);width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🛰️</div>'
+    +'<div><div style="font-size:13px;font-weight:800;color:#93C5FD">Descargar XML del SAT</div>'
+    +'<div style="font-size:9px;color:var(--t3);margin-top:1px">Servicio oficial SAT · Descarga Masiva CFDI</div></div>'
+    +(p>0?'<button onclick="satReset()" style="margin-left:auto;background:none;border:none;color:var(--t3);font-size:10px;cursor:pointer;padding:4px 8px;border-radius:6px;border:1px solid var(--b2)">✕ Reiniciar</button>':'')
+    +'</div>';
+
+  if(isLocal){
+    html+='<div style="background:#1C1917;border:1px solid #F59E0B44;border-radius:8px;padding:10px;font-size:10px;color:var(--amber);line-height:1.6">'
+      +'⚠️ Esta función requiere la versión en línea.<br>'
+      +'Sube ContaFlow a Netlify (con GitHub) para activar la descarga directa del SAT.</div>';
+  } else if(p===0){
+    // Paso 1: Ingresar FIEL
+    html+='<div style="font-size:10px;color:var(--t2);margin-bottom:10px;line-height:1.6">'
+      +'Ingresa tu e.firma (FIEL) para conectarte al portal del SAT y descargar tus XML automáticamente.</div>'
+    +'<div style="background:#071220;border:1px solid #1E3A5F;border-radius:8px;padding:10px;margin-bottom:10px;font-size:9px;color:#64748B;line-height:1.5">'
+    +'🔒 Tu FIEL se usa únicamente para firmar la solicitud. No se almacena en ningún servidor.</div>'
+    +'<div style="margin-bottom:8px">'
+    +'<div style="font-size:10px;color:var(--t2);margin-bottom:4px">📎 Certificado (.cer)</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;background:#0B1221;border:1px dashed #1E3A5F;border-radius:8px;padding:8px;cursor:pointer">'
+    +'<input type="file" id="sat-cer" accept=".cer" style="display:none" onchange="document.getElementById(\'cer-lbl\').textContent=this.files[0]?.name||\'Sin archivo\'">'
+    +'<span style="font-size:14px">📄</span>'
+    +'<span id="cer-lbl" style="font-size:10px;color:var(--t3)">Seleccionar .cer</span>'
+    +'</label></div>'
+    +'<div style="margin-bottom:8px">'
+    +'<div style="font-size:10px;color:var(--t2);margin-bottom:4px">🔑 Llave privada (.key)</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;background:#0B1221;border:1px dashed #1E3A5F;border-radius:8px;padding:8px;cursor:pointer">'
+    +'<input type="file" id="sat-key" accept=".key" style="display:none" onchange="document.getElementById(\'key-lbl\').textContent=this.files[0]?.name||\'Sin archivo\'">'
+    +'<span style="font-size:14px">🗝️</span>'
+    +'<span id="key-lbl" style="font-size:10px;color:var(--t3)">Seleccionar .key</span>'
+    +'</label></div>'
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:10px;color:var(--t2);margin-bottom:4px">🔐 Contraseña de la e.firma</div>'
+    +'<input type="password" id="sat-pass" placeholder="Contraseña FIEL" style="width:100%;background:#0B1221;border:1px solid #1E3A5F;border-radius:8px;padding:9px 12px;color:white;font-size:12px;font-family:inherit">'
+    +'</div>'
+    +'<button class="btn btn-primary" onclick="satAutenticar()">🛰️ Conectar al SAT</button>';
+
+  } else if(p===1){
+    html+='<div style="text-align:center;padding:14px">'
+    +'<div style="font-size:28px;margin-bottom:8px">⏳</div>'
+    +'<div style="font-size:12px;font-weight:700">Conectando con el SAT...</div>'
+    +'<div style="font-size:10px;color:var(--t3);margin-top:4px">Firmando solicitud con tu FIEL</div></div>';
+
+  } else if(p===2){
+    // Paso 2: seleccionar rango
+    var hoy=new Date().toISOString().slice(0,10);
+    var hace3m=new Date(Date.now()-90*864e5).toISOString().slice(0,10);
+    html+='<div style="background:#072010;border:1px solid #16532D;border-radius:8px;padding:8px;margin-bottom:12px;font-size:10px;color:var(--green)">'
+    +'✅ Conectado como <strong>'+satState.rfc+'</strong></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+    +'<div><div style="font-size:9px;color:var(--t3);margin-bottom:4px">Desde</div>'
+    +'<input type="date" id="sat-fi" value="'+hace3m+'" style="width:100%;background:#0B1221;border:1px solid #1E3A5F;border-radius:8px;padding:8px;color:white;font-size:11px;font-family:inherit"></div>'
+    +'<div><div style="font-size:9px;color:var(--t3);margin-bottom:4px">Hasta</div>'
+    +'<input type="date" id="sat-ff" value="'+hoy+'" style="width:100%;background:#0B1221;border:1px solid #1E3A5F;border-radius:8px;padding:8px;color:white;font-size:11px;font-family:inherit"></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">'
+    +'<div><div style="font-size:9px;color:var(--t3);margin-bottom:4px">Tipo</div>'
+    +'<select id="sat-tipo" style="width:100%;background:#0B1221;border:1px solid #1E3A5F;border-radius:8px;padding:8px;color:white;font-size:11px;font-family:inherit">'
+    +'<option value="R">Recibidas</option><option value="E">Emitidas</option></select></div>'
+    +'<div><div style="font-size:9px;color:var(--t3);margin-bottom:4px">Formato</div>'
+    +'<select id="sat-sol" style="width:100%;background:#0B1221;border:1px solid #1E3A5F;border-radius:8px;padding:8px;color:white;font-size:11px;font-family:inherit">'
+    +'<option value="CFDI">XML CFDI</option><option value="Metadata">Metadata</option></select></div>'
+    +'</div>'
+    +'<button class="btn btn-primary" onclick="satSolicitar()">📤 Enviar solicitud al SAT</button>';
+
+  } else if(p===3){
+    var estados={'1':'Aceptada ⏳','2':'En proceso ⚙️','3':'Lista ✅','4':'Error ❌','5':'Expirada ⌛'};
+    html+='<div style="background:#072010;border:1px solid #16532D;border-radius:8px;padding:8px;margin-bottom:10px;font-size:10px;color:var(--green)">'
+    +'✅ Conectado: <strong>'+satState.rfc+'</strong></div>'
+    +'<div style="background:#0B1221;border:1px solid #1E3A5F;border-radius:8px;padding:10px;margin-bottom:10px">'
+    +'<div style="font-size:10px;color:var(--t2)">Solicitud: <span style="color:white;font-weight:700">'+satState.idSolicitud+'</span></div>'
+    +'<div style="font-size:10px;color:var(--t2);margin-top:4px">Estado: <span style="font-weight:700">'+(estados[satState.estado]||satState.estado||'—')+'</span></div>'
+    +(satState.paquetes.length>0?'<div style="font-size:10px;color:var(--cyan);margin-top:4px">'+satState.paquetes.length+' paquete(s) listo(s)</div>':'')
+    +'</div>'
+    +(satState.estado==='3'
+      ?'<button class="btn btn-success" onclick="satDescargarTodo()" style="margin-bottom:8px">⬇️ Descargar '+satState.paquetes.length+' paquete(s) e importar</button>'
+      :'')
+    +'<button class="btn btn-secondary" onclick="satVerificar()" style="font-size:11px">🔄 Actualizar estado</button>';
+
+  } else if(p===4){
+    html+='<div style="background:#072010;border:1px solid #16532D;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;color:var(--green);text-align:center">'
+    +'✅ '+satState.paquetes.length+' paquete(s) listos para descargar</div>'
+    +'<button class="btn btn-success" onclick="satDescargarTodo()" style="margin-bottom:8px">⬇️ Importar todos los XML a ContaFlow</button>'
+    +'<button class="btn btn-secondary" onclick="satVerificar()" style="font-size:11px">🔄 Reverificar estado</button>';
+
+  } else if(p===5){
+    html+='<div style="background:#072010;border:1px solid #16532D;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;color:var(--green);text-align:center">'
+    +'✅ Descarga completada. Ve a Historial para ver tus facturas.</div>'
+    +'<button class="btn btn-primary" onclick="goto(\'historial\')">📋 Ver historial de facturas</button>';
+  }
+
+  // Log de actividad (siempre visible si hay entradas)
+  if(satState.log.length>0){
+    html+='<div style="margin-top:10px;background:#050810;border:1px solid #0F1F3A;border-radius:8px;padding:8px;max-height:100px;overflow-y:auto">'
+    +'<div style="font-size:9px;color:var(--t3);font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Log</div>'
+    +satState.log.map(function(l){return'<div style="font-size:9px;color:#4A5568;padding:2px 0;border-bottom:1px solid #0F172A">'+l+'</div>';}).join('')
+    +'</div>';
+  }
+
+  html+='</div>';
+  return html;
+}
+
+
+function vMisDatos(){
+  var ultimoBackup=localStorage.getItem('cf_ultimo_backup');
+  var totalFacturas=facturas.length;
+  var totalNominas=nominas.length;
+  var totalEmpresas=empresas.length;
+  var empActual=getEmpresaActual();
+
+  return '<div class="section-title">☁️ Mis Datos</div>'
+    +vSatSection()
+    // Resumen
+    +'<div class="card" style="margin-bottom:14px">'
+    +'<div style="font-size:11px;font-weight:700;margin-bottom:10px">📊 Resumen de tu información</div>'
+    +[['🏢 Empresas',totalEmpresas],['🧾 Facturas',totalFacturas],
+      ['📋 Nóminas',totalNominas],['💰 Ingresos AEP',aepData.ingresos.length]]
+      .map(function(s){
+        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1E293B;font-size:11px">'
+          +'<span style="color:var(--text-2)">'+s[0]+'</span>'
+          +'<span style="color:var(--text);font-weight:700">'+s[1]+'</span>'
+          +'</div>';
+      }).join('')
+    +(ultimoBackup?'<div style="font-size:9px;color:var(--text-3);margin-top:8px">Último backup: '+new Date(ultimoBackup).toLocaleDateString("es-MX")+'</div>':'')
+    +'</div>'
+
+    // Exportar
+    +'<div class="card" style="margin-bottom:12px;border-color:#10B981">'
+    +'<div style="font-size:12px;font-weight:700;color:#10B981;margin-bottom:6px">📤 Exportar mis datos</div>'
+    +'<div style="font-size:10px;color:var(--text-3);margin-bottom:10px;line-height:1.6">'
+    +'Descarga un archivo con TODAS tus facturas, nóminas, empresas y configuración. '
+    +'Guárdalo en Google Drive, WhatsApp o el correo para usarlo en otro dispositivo.'
+    +'</div>'
+    +'<button class="btn btn-success" onclick="exportarTodosMisDatos()">📤 Exportar todo mis datos</button>'
+    +'</div>'
+
+    // Importar
+    +'<div class="card" style="margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:700;margin-bottom:6px">📥 Importar datos</div>'
+    +'<div style="font-size:10px;color:var(--text-3);margin-bottom:10px;line-height:1.6">'
+    +'¿Tienes un archivo de backup de ContaFlow? Súbelo aquí para restaurar toda tu información en este dispositivo.'
+    +'</div>'
+    +'<div style="background:#1C1917;border:1px solid #F59E0B44;border-radius:8px;padding:8px;margin-bottom:10px;font-size:10px;color:var(--amber)">'
+    +'⚠️ Al importar se reemplazarán los datos actuales de este dispositivo.'
+    +'</div>'
+    +'<label style="display:block;background:var(--surface2);border:1px dashed #334155;border-radius:10px;padding:14px;text-align:center;cursor:pointer">'
+    +'<input type="file" accept=".json" style="display:none" onchange="importarDatos(this)">'
+    +'<div style="font-size:18px;margin-bottom:6px">📁</div>'
+    +'<div style="font-size:12px;font-weight:700;color:var(--primary-l)">Seleccionar archivo .json</div>'
+    +'<div style="font-size:10px;color:var(--text-3);margin-top:4px">Tap para buscar tu backup</div>'
+    +'</label>'
+    +'</div>'
+
+    // Pasos para sync entre dispositivos
+    +'<div class="card">'
+    +'<div style="font-size:11px;font-weight:700;margin-bottom:10px">📱↔️💻 ¿Cómo pasar datos a otro dispositivo?</div>'
+    +[['1','En este dispositivo','Toca "Exportar todo mis datos"'],
+      ['2','Guarda el archivo','Envíalo por WhatsApp, correo o Google Drive'],
+      ['3','En el otro dispositivo','Abre ContaFlow y ve a "Mis Datos"'],
+      ['4','Importa el archivo','Toca "Seleccionar archivo .json" y listo']
+    ].map(function(s){
+      return '<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #1E293B">'
+        +'<div style="background:#1D4ED8;color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0">'+s[0]+'</div>'
+        +'<div><div style="font-size:11px;font-weight:600">'+s[1]+'</div>'
+        +'<div style="font-size:10px;color:var(--text-3)">'+s[2]+'</div>'
+        +'</div></div>';
+    }).join('')
+    +'</div>';
+}
+
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+function render(){
+  var v={
+    dashboard:vDashboard, nueva:vNueva, historial:vHistorial,
+    auxiliar:vAuxiliar,  aep:vAEP,     regimenes:vRegimenes,
+    papeles:vPapeles,    precios:vPrecios, empresas:vEmpresas,
+    admin:vAdmin,        onboarding:vOnboarding, nomina:vNomina
+  };
+  if(typeof checkAdminURL==='function'&&checkAdminURL()&&st.view!=='admin') st.view='admin';
+  if(!planInfo&&typeof guardarPlan==='function'){
+    guardarPlan({plan:'pro',maxEmpresas:5,expiry:'2099-12',
+      clienteNombre:'Beta Gratuita',
+      activadoEl:new Date().toISOString().slice(0,10)});
+    planInfo=cargarPlan();
+    if(!empresas||!empresas.length) initEmpresas();
+  }
+  var appEl=document.getElementById('app');
+  if(!appEl) return;
+  var viewFn=v[st.view]||vDashboard;
+  try{
+    appEl.innerHTML=header()+'<main>'+viewFn()+'<\/main>'+nav();
+  }catch(e){
+    console.error('Render error:',e);
+    appEl.innerHTML='<div style="padding:20px;color:var(--red)">Error: '+e.message+'<\/div>';
+  }
+}
+
+function goto(v){st.view=v;render();window.scrollTo(0,0);}
+// Exponer render globalmente para handlers inline
+window.render=render;
+window.goto=goto;
+
+
+// Inicializar app cuando el DOM esté listo
+function initApp(){
+  const sp=document.getElementById('splash');
+  if(!sp){setTimeout(initApp,100);return;}
+  sp.style.opacity='0';
+  setTimeout(function(){
+    sp.style.display='none';
+    const appEl=document.getElementById('app');
+    if(appEl)appEl.style.display='block';
+    try{
+      const activated=checkActivationURL();
+      if(activated)toast('Plan activado correctamente');
+      if(!planInfo){
+        guardarPlan({plan:'pro',maxEmpresas:5,expiry:'2099-12',clienteNombre:'Beta Gratuita',activadoEl:new Date().toISOString().slice(0,10)});
+        planInfo=cargarPlan();
+      }
+      initEmpresas();
+      render();
+    }catch(e){
+      console.error('Init error:',e);
+      document.getElementById('app').innerHTML='<div style="padding:20px;color:red">Error: '+e.message+'</div>';
+    }
+  },500);
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(initApp,2200);});
+}else{
+  setTimeout(initApp,2200);
+}
+
+</script>
+
+
+
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
