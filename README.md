@@ -1,17 +1,35 @@
-# ContaFlow Backend
+# ContaFlow MX 🇲🇽
 
-API para ContaFlow — Del XML a la póliza, automático.
+App de contabilidad para PYMES y contadores independientes.  
+Conversión automática de CFDI XML → Pólizas contables.
 
-## Endpoints principales
+## Características
+- 📁 Importar CFDI XML (individual o masivo)
+- 📊 Pólizas contables automáticas
+- 📥 Descarga masiva del SAT (Servicio de Descarga Masiva)
+- 📱 PWA instalable (funciona offline)
+- 📈 Exportar a Excel con formato profesional
 
-- `POST /facturas/upload` — Sube XML del SAT → genera póliza
-- `POST /facturas/{id}/pago` — Registra pago
-- `GET /facturas` — Lista facturas
-- `POST /sat/descargar` — Descarga masiva del SAT con e.firma
+## Despliegue
 
-## Deploy en Railway
+Conecta este repositorio a [Netlify](https://netlify.com) con la configuración de `netlify.toml` incluida.
 
-1. Sube esta carpeta a GitHub
-2. Conecta el repo en railway.app
-3. Agrega PostgreSQL en Railway
-4. Listo ✅
+## Estructura
+```
+/
+├── ContaFlow.html          # App principal
+├── manifest.json           # PWA manifest
+├── sw.js                   # Service Worker
+├── netlify.toml            # Configuración Netlify
+└── netlify/
+    └── functions/
+        ├── package.json    # Dependencias del backend
+        └── sat-descarga.js # API Descarga Masiva SAT
+```
+
+## Variables de entorno
+No se requieren variables de entorno adicionales.
+
+## Uso del SAT Descarga Masiva
+En la app, ve a **☁️ Datos → Descargar del SAT** y sube tu FIEL (.cer + .key + contraseña).  
+Tu FIEL solo se usa para firmar la solicitud y nunca se almacena.
